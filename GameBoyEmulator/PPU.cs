@@ -5,18 +5,18 @@
     private int _cycles = 0;
     private int _mode = 2; // OAM
 
-    public byte SCX;
-    public byte SCY;
+    public bool FrameReady { get; private set; }
+    private byte ly = 0;
 
     private static readonly (byte r, byte g, byte b)[] _color = {
-        (224, 248, 208), // White
-        (136, 192, 112), // Light Gray
-        (52, 104, 86),  // Dark Gray
-        (8, 24, 32)      // Black
+        (155, 188, 15), // White
+        (139, 172, 15), // Light Gray
+        (48, 98, 48),   // Dark Gray
+        (15, 56, 15)    // Black
     };
 
     public byte[] Framebuffer => _framebuffer;
-    public bool FrameReady { get; private set; }
+    public void ClearFrameReady() => FrameReady = false;
 
     public PPU(MMU mmu)
     {
@@ -26,64 +26,59 @@
     public void Tick(int cycles)
     {
         _cycles += cycles;
-        byte ly = _mmu.Read(0xFF44);
 
-        switch (_mode)
+        if (ly < 144)
         {
-            case 2: // OAM
-                if (_cycles >= 80)
+            if (_cycles < 80)
+                UpdateMode(2);
+            else if (_cycles < 252)
+            {
+                if (_mode != 3)
                 {
-                    _cycles -= 80;
-                    _mode = 3;
-                }
-                break;
-            case 3: // Drawing
-                if (_cycles >= 172)
-                {
-                    _cycles -= 172;
+                    UpdateMode(3);
                     RenderScanline(ly);
-                    _mode = 0;
                 }
-                break;
-            case 0: // HBlank
-                if (_cycles >= 204)
-                {
-                    _cycles -= 204;
-                    _mmu.IncrementLY((byte)((ly + 1)));
-                    ly++;
-
-                    if (ly == 144)
-                    {
-                        _mode = 1; // VBlank
-                        _mmu.RequestInterrupt(0); // VBlank interrupt
-                        FrameReady = true;
-                    }
-                    else
-                    {
-                        _mode = 2;
-                    }
-                }
-                break;
-            case 1: // VBlank
-                if (_cycles >= 456)
-                {
-                    _cycles -= 456;
-                    _mmu.IncrementLY((byte)((ly + 1)));
-                    ly++;
-
-                    if (ly == 154)
-                    {
-                        _mmu.IncrementLY(0);
-                        _mode = 2;
-                        FrameReady = false;
-                    }
-                }
-                break;
-
+            }
+            else if (_cycles < 456)
+                UpdateMode(0);
         }
+        else
+        {
+            UpdateMode(1);
+        }
+
+        if (_cycles >= 456)
+        {
+            _cycles -= 456;
+            ly++;
+
+            if (ly > 153)
+            {
+                ly = 0;
+                FrameReady = true;
+            }
+
+            /*_mmu.Write(0xFF44, ly);*/
+            _mmu.IncrementLY(ly);
+
+            if (ly == 144)
+            {
+                _mmu.RequestInterrupt(0);
+            }
+        }
+
+        byte lyc = _mmu.Read(0xFF45);
+        byte stat = _mmu.Read(0xFF41);
+
+        if (ly == lyc)
+            stat |= 0x04;
+        else
+            stat &= 0xFB;
+
+        _mmu.Write(0xFF41, stat);
     }
 
-    private void RenderScanline(byte ly)
+    public void RenderScanline(byte ly)
     {
         RenderBackground(ly);
     }
@@ -97,43 +92,47 @@
         byte scy = _mmu.Read(0xFF42);
         byte bgp = _mmu.Read(0xFF47);
 
-        int[] palette = {
-            (bgp & 0x03),
-            (bgp >> 2) & 0x03,
-            (bgp >> 4) & 0x03,
-            (bgp >> 6) & 0x03
-        };
+        ushort tileMapBase = (ushort)((lcdc & 0x08) != 0 ? 0x9C00 : 0x9800);
+        bool isUnsigned = (lcdc & 0x10) != 0;
 
-        ushort tilemapBase = (lcdc & 0x08) != 0 ? (ushort)0x9C00 : (ushort)0x9800;
-        bool isUnsignedMode = (lcdc & 0x10) != 0;
-        int bgY = (ly + scy) % 256;
+        int bgY = (scy + ly) % 256;
         int tileY = bgY / 8;
-        int tileRowOffset = (bgY % 8) * 2;
+        byte lineOffset = (byte)((bgY % 8) * 2);
 
-        for (int x = 0; x < 160; x++)
+        for (int x = 0; x< 160; x++)
         {
-            int bgX = (x + scx) % 256;
+            int bgX = (scx + x) % 256;
             int tileX = bgX / 8;
 
-            int titleIndex = tileY * 32 + tileX;
-            byte tileNumber = _mmu.Read((ushort)(tilemapBase + titleIndex));
+            ushort tileAddress = (ushort)(tileMapBase + (tileY * 32) + tileX);
+            byte tileIndex = _mmu.Read(tileAddress);
 
-            ushort tileDataAddr = isUnsignedMode
-                ? (ushort)(0x8000 + tileNumber * 16)
-                : (ushort)(0x9000 + (sbyte)tileNumber * 16);
+            ushort tileDataAddress = isUnsigned
+                ? (ushort)(0x8000 + (tileIndex * 16))
+                : (ushort)(0x9000 + ((sbyte)tileIndex * 16));
 
-            byte tileLow = _mmu.Read((ushort)(tileDataAddr + tileRowOffset));
-            byte tileHigh = _mmu.Read((ushort)(tileDataAddr + tileRowOffset + 1));
-
+            byte lo = _mmu.Read((ushort)(tileDataAddress + lineOffset));
+            byte hi = _mmu.Read((ushort)(tileDataAddress + lineOffset + 1));
             byte bitIndex = (byte)(7 - (bgX % 8));
-            int colorBit = ((tileHigh >> bitIndex) & 1) << 1 | ((tileLow >> bitIndex) & 1);
 
-            var color = _color[palette[colorBit]];
+            int colorIndex = ((hi >> bitIndex) & 0x01) << 1 | ((lo >> bitIndex) & 0x01);
+            int colorBit = (bgp >> (colorIndex * 2)) & 0x03;
 
+            var color = _color[colorBit];
             int index = (ly * 160 + x) * 3;
             _framebuffer[index] = color.r;
             _framebuffer[index + 1] = color.g;
             _framebuffer[index + 2] = color.b;
         }
+    }
+
+    private void UpdateMode(int newMode)
+    {
+        if (_mode == newMode) return;
+        _mode = newMode;
+
+        byte stat = _mmu.Read(0xFF41);
+        stat = (byte)((stat & 0xFC) | (byte)(_mode & 0x03));
+        _mmu.Write(0xFF41, stat);
     }
 }

@@ -31,12 +31,20 @@
         else if (address >= 0xFEA0 && address < 0xFF00) // Unusable memory
             return 0xFF;
         else if (address >= 0xFF00 && address < 0xFF80) // IO Registers
+        {
+            // Fake Joypad register value
+            if (address == 0xFF00)
+            {
+                return 0xCF;
+            }
+            if (address == 0xFF44) return _io[0x44];
+
             return _io[address - 0xFF00];
+        }
         else if (address >= 0xFF80 && address < 0xFFFF) // HRAM
             return _hram[address - 0xFF80];
         else if (address == 0xFFFF) // Interrupt Enable Register
             return _ie;
-
         return 0xFF;
     }
 
@@ -56,14 +64,18 @@
             return; // Do nothing
         else if (address >= 0xFF00 && address < 0xFF80) // IO Registers 
         {
+            if (address == 0xFF44) return;
+
             _io[address - 0xFF00] = value;
 
-            // Serial port 
-            if (address == 0xFF02 && value == 0x81)
+            if (address == 0xFF46)
             {
-                char c = (char)_io[0x01];
-                Console.Write(c);
-                _io[0x02] = 0x00; // Clear the transfer start flag
+                ushort sourceAddr = (ushort)(value << 8);
+                for (int i = 0; i < 0xA0; i++)
+                {
+                    byte data = Read((ushort)(sourceAddr + i));
+                    _oam[i] = data;
+                }
             }
         }
         else if (address >= 0xFF80 && address < 0xFFFF) // HRAM

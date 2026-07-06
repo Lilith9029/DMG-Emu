@@ -3,8 +3,8 @@
     public CPU _cpu;
     public MMU _mmu;
     public Timer _timer;
-    public PPU _ppu;
     public RendererDMG _renderer;
+    public PPU _ppu;
 
     private int _scanlineCycles = 0;
 
@@ -20,25 +20,22 @@
     public void Run()
     {
         const double TargetFrameTime = 1000.0 / 59.73; // ~16.75ms
-        const int CyclesPerFrame = 70224;
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
         while (_renderer.HandleEvents())
         {
             long startTime = sw.ElapsedMilliseconds;
-            int cyclesThisFrame = 0;
 
-            while (cyclesThisFrame < CyclesPerFrame)
+            while (!_ppu.FrameReady)
             {
                 int cycles = _cpu.ExecuteInstruction();
                 _timer.Tick(cycles);
                 _ppu.Tick(cycles);
-                HandleInperrupts();
-
-                cyclesThisFrame += cycles;
+                HandleInterrupts();
             }
 
             _renderer.Render(_ppu.Framebuffer);
+            _ppu.ClearFrameReady();
 
             while (sw.ElapsedMilliseconds - startTime < TargetFrameTime)
             {
@@ -49,7 +46,7 @@
         _renderer.Destroy();
     }
 
-    private void HandleInperrupts()
+    private void HandleInterrupts()
     {
         byte IF = _mmu.Read(0xFF0F);
         byte IE = _mmu.Read(0xFFFF);
