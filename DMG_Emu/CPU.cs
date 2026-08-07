@@ -11,12 +11,12 @@
         // Flags register: Z, N, H, C
     }
 
-    public ushort PC; // Program Counter
-    public ushort SP; // Stack Pointer
+    public ushort PC;
+    public ushort SP;
 
-    public bool _ime; // Interrupt Master Enable
-    public bool _eiDelay; // EI instruction delay flag
-    private bool _halted; // CPU halted state
+    public bool _ime;
+    public bool _eiDelay;
+    private bool _halted;
 
     private MMU _mmu;
 
