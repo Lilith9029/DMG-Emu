@@ -1,4 +1,4 @@
-﻿namespace GameBoyEmulator;
+namespace DMG_Emu;
 
 internal class Program
 {
