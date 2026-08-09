@@ -1,5 +1,7 @@
 ﻿public class MMU
 {
+    public Joypad Joypad { get; set; }
+
     public MMU(byte[] rom)
     {
         Array.Copy(rom, _rom, Math.Min(rom.Length, _rom.Length));
@@ -32,12 +34,8 @@
             return 0xFF;
         else if (address >= 0xFF00 && address < 0xFF80) // IO Registers
         {
-            // Fake Joypad register value
             if (address == 0xFF00)
-            {
-                return 0xCF;
-            }
-            if (address == 0xFF44) return _io[0x44];
+                return Joypad?.Read() ?? 0xFF;
 
             return _io[address - 0xFF00];
         }
@@ -64,6 +62,12 @@
             return; // Do nothing
         else if (address >= 0xFF00 && address < 0xFF80) // IO Registers 
         {
+            if (address == 0xFF00)
+            {
+                Joypad?.Write(value);
+                return;
+            }
+
             if (address == 0xFF44) return;
 
             _io[address - 0xFF00] = value;

@@ -1,6 +1,7 @@
 ﻿public class DMG
 {
     public CPU _cpu;
+    public Joypad _joypad;
     public MMU _mmu;
     public Timer _timer;
     public RendererDMG _renderer;
@@ -11,6 +12,9 @@
     public DMG(byte[] rom)
     {
         _mmu = new MMU(rom);
+        _joypad = new Joypad(_mmu);
+        _mmu.Joypad = _joypad;
+
         _cpu = new CPU(_mmu);
         _timer = new Timer(_mmu);
         _ppu = new PPU(_mmu);
@@ -22,7 +26,7 @@
         const double TargetFrameTime = 1000.0 / 59.73; // ~16.75ms
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        while (_renderer.HandleEvents())
+        while (_renderer.HandleEvents(_joypad))
         {
             long startTime = sw.ElapsedMilliseconds;
 
