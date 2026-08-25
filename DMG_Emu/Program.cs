@@ -6,7 +6,9 @@ internal class Program
     {
         // Game Test ROMs
         /*byte[] rom = File.ReadAllBytes("Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb");*/
-        byte[] rom = File.ReadAllBytes("Tetris (Japan) (En).gb");
+        /*byte[] rom = File.ReadAllBytes("Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb");*/
+        byte[] rom = File.ReadAllBytes("Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2).gb");
+        /*byte[] rom = File.ReadAllBytes("Tetris (Japan) (En).gb");*/
 
         // CPU Test ROMs
         /*byte[] rom = File.ReadAllBytes("01-special.gb");*/
