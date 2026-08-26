@@ -82,4 +82,45 @@
         int offset = address - 0xA000;
         _ram[(bank * 0x2000) + offset] = value;
     }
+
+    public byte[] GetSRAM()
+    {
+        return _ram != null ? (byte[])_ram.Clone() : Array.Empty<byte>();
+    }
+
+    public void SetSRAM(byte[] saveData)
+    {
+        if (_ram == null || saveData == null) return;
+
+        int bytesToCopy = Math.Min(_ram.Length, saveData.Length);
+        Array.Copy(saveData, _ram, bytesToCopy);
+    }
+
+    public bool HasBattery()
+    {
+        return _ram != null && _ram.Length > 0;
+    }
+
+    public void SerializeState(BinaryWriter writer)
+    {
+        writer.Write(_ramEnabled);
+        writer.Write(_romBankLower);
+        writer.Write(_ramBankOrRomBankHigh);
+        writer.Write(_bankingMode);
+
+        writer.Write(_ram.Length);
+        writer.Write(_ram);
+    }
+
+    public void DeserializeState(BinaryReader reader)
+    {
+        _ramEnabled = reader.ReadBoolean();
+        _romBankLower = reader.ReadByte();
+        _ramBankOrRomBankHigh = reader.ReadByte();
+        _bankingMode = reader.ReadByte();
+
+        int ramLength = reader.ReadInt32();
+        byte[] ramData = reader.ReadBytes(ramLength);
+        Array.Copy(ramData, _ram, Math.Min(ramLength, _ram.Length));
+    }
 }

@@ -11,9 +11,9 @@
     private byte[] _hram = new byte[0x7F]; // 127 bytes
     private byte _ie; // 1 byte
 
-    public MMU(byte[] rom)
+    public MMU(ICartridge cartridge)
     {
-        _cartridge = CartridgeFactory.LoadCartridge(rom);
+        _cartridge = cartridge;
     }
 
     public byte Read(ushort address)
@@ -155,5 +155,26 @@
         byte flags = _io[0x0F];
         flags |= (byte)(1 << bit);
         _io[0x0F] = flags;
+    }
+
+    // Serialization and Deserialization
+    public void SerializeState(BinaryWriter writer)
+    {
+        writer.Write(_wram);
+        writer.Write(_vram);
+        writer.Write(_oam);
+        writer.Write(_io);
+        writer.Write(_hram);
+        _cartridge.SerializeState(writer);
+    }
+
+    public void DeserializeState(BinaryReader reader)
+    {
+        reader.Read(_wram, 0, _wram.Length);
+        reader.Read(_vram, 0, _vram.Length);
+        reader.Read(_oam, 0, _oam.Length);
+        reader.Read(_io, 0, _io.Length);
+        reader.Read(_hram, 0, _hram.Length);
+        _cartridge.DeserializeState(reader);
     }
 }

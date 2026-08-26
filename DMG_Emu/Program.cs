@@ -1,3 +1,5 @@
+using DMG_Emu.Services;
+
 namespace DMG_Emu;
 
 internal class Program
@@ -7,7 +9,7 @@ internal class Program
         // Game Test ROMs
         /*byte[] rom = File.ReadAllBytes("Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb");*/
         /*byte[] rom = File.ReadAllBytes("Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb");*/
-        byte[] rom = File.ReadAllBytes("Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2).gb");
+        /*byte[] rom = File.ReadAllBytes("Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2).gb");*/
         /*byte[] rom = File.ReadAllBytes("Tetris (Japan) (En).gb");*/
 
         // CPU Test ROMs
@@ -23,7 +25,28 @@ internal class Program
         /*byte[] rom = File.ReadAllBytes("10-bit ops.gb");*/
         /*byte[] rom = File.ReadAllBytes("11-op a,(hl).gb");*/
         /*byte[] rom = File.ReadAllBytes("cpu_instrs.gb");*/
-        DMG dmg = new DMG(rom);
+
+        string romPath = "Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2).gb";
+
+        if (!File.Exists(romPath))
+        {
+            Console.WriteLine($"ROM file not found: {romPath}");
+            return;
+        }
+
+        byte[] rom = File.ReadAllBytes(romPath);
+
+        ICartridge cartridge = CartridgeFactory.LoadCartridge(rom);
+        SaveManager.LoadSaveData(romPath, cartridge);
+
+        AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+        {
+            SaveManager.SaveData(romPath, cartridge);
+        };
+
+        MMU mmu = new MMU(cartridge);
+        DMG dmg = new DMG(mmu, romPath);
+
         dmg.Run();
     }
 }

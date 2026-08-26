@@ -1,4 +1,5 @@
-﻿using SDL2;
+﻿using DMG_Emu.Services;
+using SDL2;
 
 public class RendererDMG
 {
@@ -34,12 +35,24 @@ public class RendererDMG
         SDL.SDL_RenderPresent(_renderer);
     }
 
-    public bool HandleEvents(Joypad joypad)
+    public bool HandleEvents(Joypad joypad, string romPath, DMG dmg)
     {
         while (SDL.SDL_PollEvent(out SDL.SDL_Event e) != 0)
         {
             if (e.type == SDL.SDL_EventType.SDL_QUIT)
                 return false;
+
+            if (e.type == SDL.SDL_EventType.SDL_KEYDOWN)
+            {
+                if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F5)
+                {
+                    StateManager.SaveState(romPath, dmg, slot: 1);
+                }
+                else if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F8)
+                {
+                    StateManager.LoadState(romPath, dmg, slot: 1);
+                }
+            }
 
             if (e.type == SDL.SDL_EventType.SDL_CONTROLLERDEVICEADDED)
             {

@@ -7,11 +7,15 @@
     public RendererDMG _renderer;
     public PPU _ppu;
 
+    private readonly string _romPath;
+
     private int _scanlineCycles = 0;
 
-    public DMG(byte[] rom)
+    public DMG(MMU mmu, string romPath)
     {
-        _mmu = new MMU(rom);
+        _mmu = mmu;
+        _romPath = romPath;
+
         _joypad = new Joypad(_mmu);
         _mmu.Joypad = _joypad;
 
@@ -26,7 +30,7 @@
         const double TargetFrameTime = 1000.0 / 59.73; // ~16.75ms
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        while (_renderer.HandleEvents(_joypad))
+        while (_renderer.HandleEvents(_joypad, _romPath, this))
         {
             long startTime = sw.ElapsedMilliseconds;
 

@@ -270,4 +270,21 @@
             _mmu.RequestInterrupt(1);
         }
     }
+
+    // State Serialization and Deserialization
+    public void SerializeState(BinaryWriter writer)
+    {
+        writer.Write(_cycles);
+        writer.Write(_mode);
+        writer.Write(FrameReady);
+        writer.Write(ly);
+    }
+
+    public void DeserializeState(BinaryReader reader)
+    {
+        _cycles = reader.ReadInt32();
+        _mode = reader.ReadInt32();
+        FrameReady = reader.ReadBoolean();
+        ly = reader.ReadByte();
+    }
 }

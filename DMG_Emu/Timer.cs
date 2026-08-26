@@ -44,4 +44,17 @@
             }
         }
     }
+
+    // State serialization and deserialization
+    public void SerializeState(BinaryWriter writer)
+    {
+        writer.Write(_divCounter);
+        writer.Write(_timaCounter);
+    }
+
+    public void DeserializeState(BinaryReader reader)
+    {
+        _divCounter = reader.ReadInt32();
+        _timaCounter = reader.ReadInt32();
+    }
 }

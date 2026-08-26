@@ -112,7 +112,7 @@
 
         if (_eiDelay) { _eiDelay = false; _ime = true; }
 
-        byte opcode = Fetch();      
+        byte opcode = Fetch();
 
         switch (opcode)
         {
@@ -1373,7 +1373,7 @@
 
     // JR (Relative Jump) instructions
     private int JR_e8()
-    {   
+    {
         sbyte offset = (sbyte)Fetch();
         PC = (ushort)(PC + offset);
         return 12;
@@ -2213,7 +2213,7 @@
         Console.WriteLine($"  PC=0x{(PC - 1):X4}  SP=0x{SP:X4}");
         Console.WriteLine($"  AF=0x{AF:X4}  BC=0x{BC:X4}  DE=0x{DE:X4}  HL=0x{HL:X4}");
 
-        Environment.Exit(1);    
+        Environment.Exit(1);
         return 0;
     }
 
@@ -2227,5 +2227,38 @@
         PushPC();
         PC = vector;
         /*_ime = false;*/
+    }
+
+    // State serialization and deserialization
+    public void SerializeState(BinaryWriter writer)
+    {
+        writer.Write(A);
+        writer.Write(F);
+        writer.Write(B);
+        writer.Write(C);
+        writer.Write(D);
+        writer.Write(E);
+        writer.Write(H);
+        writer.Write(L);
+        writer.Write(SP);
+        writer.Write(PC);
+        writer.Write(_ime);
+        writer.Write(_halted);
+    }
+
+    public void DeserializeState(BinaryReader reader)
+    {
+        A = reader.ReadByte();
+        F = reader.ReadByte();
+        B = reader.ReadByte();
+        C = reader.ReadByte();
+        D = reader.ReadByte();
+        E = reader.ReadByte();
+        H = reader.ReadByte();
+        L = reader.ReadByte();
+        SP = reader.ReadUInt16();
+        PC = reader.ReadUInt16();
+        _ime = reader.ReadBoolean();
+        _halted = reader.ReadBoolean();
     }
 }

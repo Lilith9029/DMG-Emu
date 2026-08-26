@@ -29,4 +29,29 @@
     {
         // do nothing
     }
+
+    public byte[] GetSRAM()
+    {
+        return Array.Empty<byte>();
+    }
+
+    public void SetSRAM(byte[] saveData)
+    {
+        // do nothing
+    }
+
+    public bool HasBattery()
+    {
+        return false;
+    }
+
+    public void SerializeState(BinaryWriter writer)
+    {
+        // do nothing
+    }
+
+    public void DeserializeState(BinaryReader reader)
+    {
+        // do nothing
+    }
 }
