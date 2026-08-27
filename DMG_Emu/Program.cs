@@ -26,7 +26,7 @@ internal class Program
         /*byte[] rom = File.ReadAllBytes("11-op a,(hl).gb");*/
         /*byte[] rom = File.ReadAllBytes("cpu_instrs.gb");*/
 
-        string romPath = "Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2).gb";
+        string romPath = "halt_bug.gb";
 
         if (!File.Exists(romPath))
         {

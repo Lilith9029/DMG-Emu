@@ -74,7 +74,11 @@
             if ((pending & (1 << i)) != 0)
             {
                 _mmu.Write(0xFF0F, (byte)(IF & ~(1 << i)));
-                _cpu.CallInterrupt(vectors[i]);
+                int dispatchCycles = _cpu.CallInterrupt(vectors[i]);
+
+                _timer.Tick(dispatchCycles);
+                _ppu.Tick(dispatchCycles);
+
                 return;
             }
         }

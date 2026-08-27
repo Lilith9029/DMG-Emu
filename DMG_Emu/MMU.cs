@@ -1,4 +1,4 @@
-﻿public class MMU
+public class MMU
 {
     public Joypad? Joypad { get; set; }
 
@@ -44,7 +44,13 @@
             if (address == 0xFF00)
                 return Joypad?.Read() ?? 0xFF;
 
-            return _io[address - 0xFF00];
+            byte value = _io[address - 0xFF00];
+            if (address == 0xFF0F)
+                value |= 0xE0;
+
+            return value;
+
+            /*return _io[address - 0xFF00];*/
         }
 
         if (address <= 0xFFFE) // HRAM

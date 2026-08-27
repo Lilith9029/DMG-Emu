@@ -1,4 +1,4 @@
-﻿public class CPU
+public class CPU
 {
     // 8-bit registers
     public byte A, B, C, D, E, H, L;
@@ -17,6 +17,7 @@
     public bool _ime;
     public bool _eiDelay;
     private bool _halted;
+    private bool _haltBug;
 
     private MMU _mmu;
 
@@ -83,7 +84,20 @@
 
     private byte Fetch()
     {
-        return _mmu.Read(PC++);
+        /*return _mmu.Read(PC++);*/
+
+        byte result = _mmu.Read(PC);
+
+        if (_haltBug)
+        {
+            _haltBug = false;
+        }
+        else
+        {
+            PC++;
+        }
+
+        return result;
     }
 
     private ushort Fetch16()
@@ -1920,7 +1934,27 @@
 
     private int HALT()
     {
-        _halted = true;
+        byte IE = _mmu.Read(0xFFFF);
+        byte IF = _mmu.Read(0xFF0F);
+        bool pending = (IE & IF & 0x1F) != 0;
+
+        if (!_ime)
+        {
+            if (pending)
+            {
+                _haltBug = true;
+                _halted = false;
+            }
+            else
+            {
+                _halted = true;
+            }
+        }
+        else
+        {
+            _halted = true;
+        }
+
         return 4;
     }
 
@@ -2222,11 +2256,13 @@
         _halted = false;
     }
 
-    public void CallInterrupt(ushort vector)
+    public int CallInterrupt(ushort vector)
     {
         PushPC();
         PC = vector;
         /*_ime = false;*/
+
+        return 20;
     }
 
     // State serialization and deserialization
