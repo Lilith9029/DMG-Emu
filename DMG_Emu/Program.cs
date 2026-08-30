@@ -12,21 +12,12 @@ internal class Program
         /*byte[] rom = File.ReadAllBytes("Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2).gb");*/
         /*byte[] rom = File.ReadAllBytes("Tetris (Japan) (En).gb");*/
 
-        // CPU Test ROMs
-        /*byte[] rom = File.ReadAllBytes("01-special.gb");*/
-        /*byte[] rom = File.ReadAllBytes("02-interrupts.gb");*/
-        /*byte[] rom = File.ReadAllBytes("03-op sp,hl.gb");*/
-        /*byte[] rom = File.ReadAllBytes("04-op r,imm.gb");*/
-        /*byte[] rom = File.ReadAllBytes("05-op rp.gb");*/
-        /*byte[] rom = File.ReadAllBytes("06-ld r,r.gb");*/
-        /*byte[] rom = File.ReadAllBytes("07-jr,jp,call,ret,rst.gb");*/
-        /*byte[] rom = File.ReadAllBytes("08-misc instrs.gb");*/
-        /*byte[] rom = File.ReadAllBytes("09-op r,r.gb");*/
-        /*byte[] rom = File.ReadAllBytes("10-bit ops.gb");*/
-        /*byte[] rom = File.ReadAllBytes("11-op a,(hl).gb");*/
-        /*byte[] rom = File.ReadAllBytes("cpu_instrs.gb");*/
-
-        string romPath = "halt_bug.gb";
+        string romPath = "mem-timming - 01/03-modify_timing.gb";
+        /*cpu_instrs/cpu_instrs.gb
+        mem-timming - 01/01-read_timing.gb
+        mem-timming - 01/02-write_timing.gb
+        mem-timming - 01/03-modify_timing.gb
+        mem-timming - 01/mem_timing.gb*/
 
         if (!File.Exists(romPath))
         {

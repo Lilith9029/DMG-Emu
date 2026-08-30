@@ -20,6 +20,7 @@ public class CPU
     private bool _haltBug;
 
     private MMU _mmu;
+    private readonly Action<int> _tick;
 
     public ushort AF
     {
@@ -69,7 +70,7 @@ public class CPU
         set { if (value) F |= 0x10; else F &= 0xEF; }
     }
 
-    public CPU(MMU mmu)
+    public CPU(MMU mmu, Action<int> tickCallBack)
     {
         A = 0x01;
         F = 0xB0; // Initial flags: Z=1, N=0, H=1, C=1 (0x00 for DMG, 0xB0 for CGB)
@@ -80,24 +81,33 @@ public class CPU
         SP = 0xFFFE;
 
         _mmu = mmu;
+        _tick = tickCallBack;
+    }
+
+    private byte ReadCycle(ushort addr)
+    {
+        byte value = _mmu.Read(addr);
+        _tick(4);
+        return value;
+    }
+
+    private void WriteCycle(ushort addr, byte value)
+    {
+        _mmu.Write(addr, value);
+        _tick(4);
     }
 
     private byte Fetch()
     {
-        /*return _mmu.Read(PC++);*/
-
-        byte result = _mmu.Read(PC);
+        byte value = _mmu.Read(PC);
 
         if (_haltBug)
-        {
             _haltBug = false;
-        }
         else
-        {
             PC++;
-        }
 
-        return result;
+        _tick(4);
+        return value;
     }
 
     private ushort Fetch16()
@@ -109,15 +119,15 @@ public class CPU
 
     private ushort PopWord()
     {
-        byte lo = _mmu.Read(SP++);
-        byte hi = _mmu.Read(SP++);
+        byte lo = ReadCycle(SP++);
+        byte hi = ReadCycle(SP++);
         return (ushort)(hi << 8 | lo);
     }
 
     private void PushPC()
     {
-        _mmu.Write(--SP, (byte)(PC >> 8)); // High byte
-        _mmu.Write(--SP, (byte)(PC & 0xFF)); // Low byte
+        WriteCycle(--SP, (byte)(PC >> 8)); // High byte
+        WriteCycle(--SP, (byte)(PC & 0xFF)); // Low byte
     }
 
     public int ExecuteInstruction()
@@ -1179,156 +1189,158 @@ public class CPU
     {
         byte n8 = Fetch();
         r = n8;
-        return 8;
+        return 0;
     }
 
     private int LD_r_r(ref byte r1, byte r2)
     {
         r1 = r2;
-        return 4;
+        return 0;
     }
 
     private int LD_r_HL(ref byte r)
     {
-        r = _mmu.Read(HL);
-        return 8;
+        r = ReadCycle(HL);
+        return 0;
     }
     private int LD_HL_r(ref byte r)
     {
-        _mmu.Write(HL, r);
-        return 8;
+        WriteCycle(HL, r);
+        return 0;
     }
 
     private int LD_HL_n8()
     {
         byte n8 = Fetch();
-        _mmu.Write(HL, n8);
-        return 12;
+        WriteCycle(HL, n8);
+        return 0;
     }
 
     private int LD_rr_A(ushort r)
     {
-        _mmu.Write(r, A);
-        return 8;
+        WriteCycle(r, A);
+        return 0;
     }
 
     private int LD_A_rr(ushort r)
     {
-        A = _mmu.Read(r);
-        return 8;
+        A = ReadCycle(r);
+        return 0;
     }
 
     private int LD_HLI_A()
     {
-        _mmu.Write(HL, A);
+        WriteCycle(HL, A);
         HL++;
-        return 8;
+        return 0;
     }
 
     private int LD_HLD_A()
     {
-        _mmu.Write(HL, A);
+        WriteCycle(HL, A);
         HL--;
-        return 8;
+        return 0;
     }
 
     private int LD_A_HLI()
     {
-        A = _mmu.Read(HL);
+        A = ReadCycle(HL);
         HL++;
-        return 8;
+        return 0;
     }
 
     private int LD_A_HLD()
     {
-        A = _mmu.Read(HL);
+        A = ReadCycle(HL);
         HL--;
-        return 8;
+        return 0;
     }
 
     private int LDH_a8_A()
     {
-        _mmu.Write((ushort)(0xFF00 + Fetch()), A);
-        return 12;
+        WriteCycle((ushort)(0xFF00 + Fetch()), A);
+        return 0;
     }
 
     private int LDH_A_a8()
     {
-        A = _mmu.Read((ushort)(0xFF00 + Fetch()));
-        return 12;
+        A = ReadCycle((ushort)(0xFF00 + Fetch()));
+        return 0;
     }
 
     private int LDH_C_A()
     {
-        _mmu.Write((ushort)(0xFF00 + C), A);
-        return 8;
+        WriteCycle((ushort)(0xFF00 + C), A);
+        return 0;
     }
 
     private int LDH_A_C()
     {
-        A = _mmu.Read((ushort)(0xFF00 + C));
-        return 8;
+        A = ReadCycle((ushort)(0xFF00 + C));
+        return 0;
     }
 
     private int LD_a16_A()
     {
-        _mmu.Write(Fetch16(), A);
-        return 16;
+        WriteCycle(Fetch16(), A);
+        return 0;
     }
 
     private int LD_A_a16()
     {
-        A = _mmu.Read(Fetch16());
-        return 16;
+        A = ReadCycle(Fetch16());
+        return 0;
     }
 
     // 16-bit load instructions 
     private int LD_rr_nn(Action<ushort> rr)
     {
         rr(Fetch16());
-        return 12;
+        return 0;
     }
 
     private int LD_a16_rr(ushort rr)
     {
         ushort addr = Fetch16();
-        _mmu.Write(addr, (byte)(rr & 0xFF)); // Low byte
-        _mmu.Write((ushort)(addr + 1), (byte)(rr >> 8)); // High byte
-        return 20;
+        WriteCycle(addr, (byte)(rr & 0xFF)); // Low byte
+        WriteCycle((ushort)(addr + 1), (byte)(rr >> 8)); // High byte
+        return 0;
     }
 
     private int LD_SP_HL()
     {
         SP = HL;
-        return 8;
+        return 4;
     }
 
     private int POP_rr(ref byte r1, ref byte r2)
     {
-        r2 = _mmu.Read(SP++); // Low byte
-        r1 = _mmu.Read(SP++); // High byte
-        return 12;
+        r2 = ReadCycle(SP++); // Low byte
+        r1 = ReadCycle(SP++); // High byte
+        return 0;
     }
 
     private int POP_AF()
     {
-        F = (byte)(_mmu.Read(SP++) & 0xF0); // Low byte
-        A = _mmu.Read(SP++); // High byte
-        return 12;
+        F = (byte)(ReadCycle(SP++) & 0xF0); // Low byte
+        A = ReadCycle(SP++); // High byte
+        return 0;
     }
 
     private int PUSH_rr(ref byte r1, ref byte r2)
     {
-        _mmu.Write(--SP, r1); // High byte
-        _mmu.Write(--SP, r2); // Low byte
-        return 16;
+        _tick(4);
+        WriteCycle(--SP, r1); // High byte
+        WriteCycle(--SP, r2); // Low byte
+        return 0;
     }
 
     private int PUSH_AF()
     {
-        _mmu.Write(--SP, A); // High byte
-        _mmu.Write(--SP, (byte)(F & 0xF0)); // Low byte
-        return 16;
+        _tick(4);
+        WriteCycle(--SP, A); // High byte
+        WriteCycle(--SP, (byte)(F & 0xF0)); // Low byte
+        return 0;
     }
 
     private int LD_HL_SP_e8()
@@ -1340,49 +1352,49 @@ public class CPU
         FlagH = ((SP ^ e8 ^ result) & 0x10) != 0;
         FlagC = ((SP ^ e8 ^ result) & 0x100) != 0;
         HL = (ushort)result;
-        return 12;
+        return 4;
     }
 
     //  Jumps / calls instructions
     // JP (Jump) instructions
     private int JP_NZ_a16()
     {
-        if (!FlagZ) { PC = Fetch16(); return 16; }
+        if (!FlagZ) { PC = Fetch16(); return 4; }
         PC += 2;
-        return 12;
+        return 0;
     }
 
     private int JP_a16()
     {
         PC = Fetch16();
-        return 16;
+        return 4;
     }
 
     private int JP_Z_a16()
     {
-        if (FlagZ) { PC = Fetch16(); return 16; }
+        if (FlagZ) { PC = Fetch16(); return 4; }
         PC += 2;
-        return 12;
+        return 0;
     }
 
     private int JP_NC_a16()
     {
-        if (!FlagC) { PC = Fetch16(); return 16; }
+        if (!FlagC) { PC = Fetch16(); return 4; }
         PC += 2;
-        return 12;
+        return 0;
     }
 
     private int JP_C_a16()
     {
-        if (FlagC) { PC = Fetch16(); return 16; }
+        if (FlagC) { PC = Fetch16(); return 4; }
         PC += 2;
-        return 12;
+        return 0;
     }
 
     private int JP_HL()
     {
         PC = HL;
-        return 4;
+        return 0;
     }
 
     // JR (Relative Jump) instructions
@@ -1390,118 +1402,124 @@ public class CPU
     {
         sbyte offset = (sbyte)Fetch();
         PC = (ushort)(PC + offset);
-        return 12;
+        return 4;
     }
 
     private int JR_NZ_e8()
     {
         sbyte offset = (sbyte)Fetch();
-        if (!FlagZ) { PC = (ushort)(PC + offset); return 12; }
-        return 8;
+        if (!FlagZ) { PC = (ushort)(PC + offset); return 4; }
+        return 0;
     }
 
     private int JR_Z_e8()
     {
         sbyte offset = (sbyte)Fetch();
-        if (FlagZ) { PC = (ushort)(PC + offset); return 12; }
-        return 8;
+        if (FlagZ) { PC = (ushort)(PC + offset); return 4; }
+        return 0;
     }
 
     private int JR_NC_e8()
     {
         sbyte offset = (sbyte)Fetch();
-        if (!FlagC) { PC = (ushort)(PC + offset); return 12; }
-        return 8;
+        if (!FlagC) { PC = (ushort)(PC + offset); return 4; }
+        return 0;
     }
 
     private int JR_C_e8()
     {
         sbyte offset = (sbyte)Fetch();
-        if (FlagC) { PC = (ushort)(PC + offset); return 12; }
-        return 8;
+        if (FlagC) { PC = (ushort)(PC + offset); return 4; }
+        return 0;
     }
 
     // CALL (Call) instructions
     private int CALL_NZ_a16()
     {
         ushort addr = Fetch16();
-        if (!FlagZ) { PushPC(); PC = addr; return 24; }
-        return 12;
+        if (!FlagZ) { _tick(4); PushPC(); PC = addr; return 0; }
+        return 0;
     }
 
     private int CALL_Z_a16()
     {
         ushort addr = Fetch16();
-        if (FlagZ) { PushPC(); PC = addr; return 24; }
-        return 12;
+        if (FlagZ) { _tick(4); PushPC(); PC = addr; return 0; }
+        return 0;
     }
 
     private int CALL_a16()
     {
         ushort addr = Fetch16();
+        _tick(4);
         PushPC();
         PC = addr;
-        return 24;
+        return 0;
     }
 
     private int CALL_NC_a16()
     {
         ushort addr = Fetch16();
-        if (!FlagC) { PushPC(); PC = addr; return 24; }
-        return 12;
+        if (!FlagC) { _tick(4); PushPC(); PC = addr; return 0; }
+        return 0;
     }
 
     private int CALL_C_a16()
     {
         ushort addr = Fetch16();
-        if (FlagC) { PushPC(); PC = addr; return 24; }
-        return 12;
+        if (FlagC) { _tick(4); PushPC(); PC = addr; return 0; }
+        return 0;
     }
 
     // RET/RETI (Reset) instructions
     private int RET_NZ()
     {
-        if (!FlagZ) { PC = PopWord(); return 20; }
-        return 8;
+        _tick(4);
+        if (!FlagZ) { PC = PopWord(); return 4; }
+        return 0;
     }
 
     private int RET_Z()
     {
-        if (FlagZ) { PC = PopWord(); return 20; }
-        return 8;
+        _tick(4);
+        if (FlagZ) { PC = PopWord(); return 4; }
+        return 0;
     }
 
     private int RET()
     {
         PC = PopWord();
-        return 16;
+        return 4;
     }
 
     private int RET_NC()
     {
-        if (!FlagC) { PC = PopWord(); return 20; }
-        return 8;
+        _tick(4);
+        if (!FlagC) { PC = PopWord(); return 4; }
+        return 0;
     }
 
     private int RET_C()
     {
-        if (FlagC) { PC = PopWord(); return 20; }
-        return 8;
+        _tick(4);
+        if (FlagC) { PC = PopWord(); return 4; }
+        return 0;
     }
 
     private int RETI()
     {
         PC = PopWord();
         _ime = true;
-        return 16;
+        return 4;
     }
 
     // RST (Restart) instructions
     private int RST(ushort vector)
     {
+        _tick(4);
         PushPC();
         PC = vector;
-        return 16;
+        return 0;
     }
 
     // 8-bit arithmetic / logical instructions
@@ -1514,20 +1532,19 @@ public class CPU
         FlagH = ((A ^ r ^ result) & 0x10) != 0;
         FlagC = result > 0xFF;
         A = (byte)result;
-        return 4;
+        return 0;
     }
 
     private int ADD_A_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         int result = A + value;
         FlagZ = (byte)result == 0;
         FlagN = false;
         FlagH = ((A ^ value ^ result) & 0x10) != 0;
         FlagC = result > 0xFF;
         A = (byte)result;
-        return 8;
-
+        return 0;
     }
 
     private int ADD_A_n8()
@@ -1539,7 +1556,7 @@ public class CPU
         FlagH = ((A ^ n8 ^ result) & 0x10) != 0;
         FlagC = result > 0xFF;
         A = (byte)result;
-        return 8;
+        return 0;
     }
 
     // ADC (Add with Carry) instructions
@@ -1552,12 +1569,12 @@ public class CPU
         FlagH = ((A & 0x0F) + (r & 0x0F) + carry) > 0x0F;
         FlagC = result > 0xFF;
         A = (byte)result;
-        return 4;
+        return 0;
     }
 
     private int ADC_A_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         int carry = FlagC ? 1 : 0;
         int result = A + value + carry;
         FlagZ = (byte)result == 0;
@@ -1565,7 +1582,7 @@ public class CPU
         FlagH = ((A & 0x0F) + (value & 0x0F) + carry) > 0x0F;
         FlagC = result > 0xFF;
         A = (byte)result;
-        return 8;
+        return 0;
     }
 
     private int ADC_A_n8()
@@ -1578,7 +1595,7 @@ public class CPU
         FlagH = ((A & 0x0F) + (n8 & 0x0F) + carry) > 0x0F;
         FlagC = result > 0xFF;
         A = (byte)result;
-        return 8;
+        return 0;
     }
 
     // SUB (Subtract) instructions
@@ -1590,19 +1607,19 @@ public class CPU
         FlagH = (A & 0x0F) < (r & 0x0F);
         FlagC = A < r;
         A = (byte)result;
-        return 4;
+        return 0;
     }
 
     private int SUB_A_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         int result = A - value;
         FlagZ = (byte)result == 0;
         FlagN = true;
         FlagH = (A & 0x0F) < (value & 0x0F);
         FlagC = A < value;
         A = (byte)result;
-        return 8;
+        return 0;
     }
 
     private int SUB_A_n8()
@@ -1614,7 +1631,7 @@ public class CPU
         FlagH = (A & 0x0F) < (n8 & 0x0F);
         FlagC = A < n8;
         A = (byte)result;
-        return 8;
+        return 0;
     }
 
     // SBC (Subtract with Carry) instructions
@@ -1627,12 +1644,12 @@ public class CPU
         FlagH = (A & 0x0F) < (r & 0x0F) + carry;
         FlagC = (int)A - r - carry < 0;
         A = (byte)result;
-        return 4;
+        return 0;
     }
 
     private int SBC_A_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         int carry = FlagC ? 1 : 0;
         int result = A - value - carry;
         FlagZ = (byte)result == 0;
@@ -1640,7 +1657,7 @@ public class CPU
         FlagH = (A & 0x0F) < (value & 0x0F) + carry;
         FlagC = (int)A - value - carry < 0;
         A = (byte)result;
-        return 8;
+        return 0;
     }
 
     private int SBC_A_n8()
@@ -1653,7 +1670,7 @@ public class CPU
         FlagH = (A & 0x0F) < (n8 & 0x0F) + carry;
         FlagC = (int)A - n8 - carry < 0;
         A = (byte)result;
-        return 8;
+        return 0;
     }
 
     // AND (inclusive AND) instructions
@@ -1664,17 +1681,17 @@ public class CPU
         FlagN = false;
         FlagH = true;
         FlagC = false;
-        return 4;
+        return 0;
     }
 
     private int AND_A_HL()
     {
-        A &= _mmu.Read(HL);
+        A &= ReadCycle(HL);
         FlagZ = A == 0;
         FlagN = false;
         FlagH = true;
         FlagC = false;
-        return 8;
+        return 0;
     }
 
     private int AND_A_n8()
@@ -1684,7 +1701,7 @@ public class CPU
         FlagN = false;
         FlagH = true;
         FlagC = false;
-        return 8;
+        return 0;
     }
 
     // XOR (exclusive OR) instructions
@@ -1695,17 +1712,17 @@ public class CPU
         FlagN = false;
         FlagH = false;
         FlagC = false;
-        return 4;
+        return 0;
     }
 
     private int XOR_A_HL()
     {
-        A ^= _mmu.Read(HL);
+        A ^= ReadCycle(HL);
         FlagZ = A == 0;
         FlagN = false;
         FlagH = false;
         FlagC = false;
-        return 8;
+        return 0;
     }
 
     private int XOR_A_n8()
@@ -1715,7 +1732,7 @@ public class CPU
         FlagN = false;
         FlagH = false;
         FlagC = false;
-        return 8;
+        return 0;
     }
 
     // OR (inclusive OR) instructions
@@ -1726,17 +1743,17 @@ public class CPU
         FlagN = false;
         FlagH = false;
         FlagC = false;
-        return 4;
+        return 0;
     }
 
     private int OR_A_HL()
     {
-        A |= _mmu.Read(HL);
+        A |= ReadCycle(HL);
         FlagZ = A == 0;
         FlagN = false;
         FlagH = false;
         FlagC = false;
-        return 8;
+        return 0;
     }
 
     private int OR_A_n8()
@@ -1746,7 +1763,7 @@ public class CPU
         FlagN = false;
         FlagH = false;
         FlagC = false;
-        return 8;
+        return 0;
     }
 
     // CP (Compare) instructions
@@ -1757,18 +1774,18 @@ public class CPU
         FlagN = true;
         FlagH = (A & 0x0F) < (r & 0x0F);
         FlagC = A < r;
-        return 4;
+        return 0;
     }
 
     private int CP_A_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         int result = A - value;
         FlagZ = (byte)result == 0;
         FlagN = true;
         FlagH = (A & 0x0F) < (value & 0x0F);
         FlagC = A < value;
-        return 8;
+        return 0;
     }
 
     private int CP_A_n8()
@@ -1779,7 +1796,7 @@ public class CPU
         FlagN = true;
         FlagH = (A & 0x0F) < (n8 & 0x0F);
         FlagC = A < n8;
-        return 8;
+        return 0;
     }
 
     // INC (Increment) instructions
@@ -1789,18 +1806,18 @@ public class CPU
         r++;
         FlagZ = r == 0;
         FlagN = false;
-        return 4;
+        return 0;
     }
 
     private int INC_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         FlagH = (value & 0x0F) == 0x0F;
         value++;
-        _mmu.Write(HL, value);
+        WriteCycle(HL, value);
         FlagZ = value == 0;
         FlagN = false;
-        return 12;
+        return 0;
     }
 
     // DEC (Decrement) instructions
@@ -1810,18 +1827,18 @@ public class CPU
         r--;
         FlagZ = r == 0;
         FlagN = true;
-        return 4;
+        return 0;
     }
 
     private int DEC_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         FlagH = (value & 0x0F) == 0x00;
         value--;
-        _mmu.Write(HL, value);
+        WriteCycle(HL, value);
         FlagZ = value == 0;
         FlagN = true;
-        return 12;
+        return 0;
     }
 
     // DAA, CPL, SCF, CCF
@@ -1852,7 +1869,7 @@ public class CPU
         FlagH = false;
         FlagC = newCarry;
 
-        return 4;
+        return 0;
     }
 
     private int CPL()
@@ -1860,7 +1877,7 @@ public class CPU
         A = (byte)~A;
         FlagN = true;
         FlagH = true;
-        return 4;
+        return 0;
     }
 
     private int SCF()
@@ -1868,7 +1885,7 @@ public class CPU
         FlagN = false;
         FlagH = false;
         FlagC = true;
-        return 4;
+        return 0;
     }
 
     private int CCF()
@@ -1876,7 +1893,7 @@ public class CPU
         FlagN = false;
         FlagH = false;
         FlagC = !FlagC;
-        return 4;
+        return 0;
     }
 
     // 16-bit arithmetic / logical instructions
@@ -1886,7 +1903,7 @@ public class CPU
         value++;
         set(value);
         // set((ushort)(get() + 1));
-        return 8;
+        return 4;
     }
 
     private int ADD_HL_rr(ushort rr)
@@ -1896,7 +1913,7 @@ public class CPU
         FlagH = ((HL & 0x0FFF) + (rr & 0x0FFF)) > 0x0FFF;
         FlagC = result > 0xFFFF;
         HL = (ushort)result;
-        return 8;
+        return 4;
     }
 
     private int DEC_rr(Func<ushort> get, Action<ushort> set)
@@ -1905,7 +1922,7 @@ public class CPU
         value--;
         set(value);
         // set((ushort)(get() - 1));
-        return 8;
+        return 4;
     }
 
     private int ADD_SP_e8()
@@ -1917,25 +1934,25 @@ public class CPU
         FlagH = ((SP & 0x0F) + (e8 & 0x0F)) > 0x0F;
         FlagC = ((SP & 0xFF) + (e8 & 0xFF)) > 0xFF;
         SP = (ushort)result;
-        return 16;
+        return 8;
     }
 
     // Misc / control instructions
     private int NOP()
     {
-        return 4;
+        return 0;
     }
 
     private int STOP()
     {
         PC++;
-        return 4;
+        return 0;
     }
 
     private int HALT()
     {
-        byte IE = _mmu.Read(0xFFFF);
-        byte IF = _mmu.Read(0xFF0F);
+        byte IE = ReadCycle(0xFFFF);
+        byte IF = ReadCycle(0xFF0F);
         bool pending = (IE & IF & 0x1F) != 0;
 
         if (!_ime)
@@ -1955,19 +1972,19 @@ public class CPU
             _halted = true;
         }
 
-        return 4;
+        return 0;
     }
 
     private int DI()
     {
         _ime = false;
-        return 4;
+        return 0;
     }
 
     private int EI()
     {
         _eiDelay = true; // Enable IME after next instruction
-        return 4;
+        return 0;
     }
 
     // 8-bit shift, rotate and bit instructions
@@ -1979,7 +1996,7 @@ public class CPU
         FlagZ = false;
         FlagN = false;
         FlagH = false;
-        return 4;
+        return 0;
     }
 
     private int RRCA()
@@ -1989,7 +2006,7 @@ public class CPU
         FlagZ = false;
         FlagN = false;
         FlagH = false;
-        return 4;
+        return 0;
     }
 
     private int RLA()
@@ -2000,7 +2017,7 @@ public class CPU
         FlagZ = false;
         FlagN = false;
         FlagH = false;
-        return 4;
+        return 0;
     }
 
     private int RRA()
@@ -2011,7 +2028,7 @@ public class CPU
         FlagZ = false;
         FlagN = false;
         FlagH = false;
-        return 4;
+        return 0;
     }
 
     // CB-prefixed

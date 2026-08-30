@@ -9,8 +9,6 @@
 
     private readonly string _romPath;
 
-    private int _scanlineCycles = 0;
-
     public DMG(MMU mmu, string romPath)
     {
         _mmu = mmu;
@@ -19,10 +17,16 @@
         _joypad = new Joypad(_mmu);
         _mmu.Joypad = _joypad;
 
-        _cpu = new CPU(_mmu);
+        _cpu = new CPU(_mmu, TickCycles);
         _timer = new Timer(_mmu);
         _ppu = new PPU(_mmu);
         _renderer = new RendererDMG();
+    }
+
+    public void TickCycles(int cycles)
+    {
+        _timer.Tick(cycles);
+        _ppu.Tick(cycles);
     }
 
     public void Run()
@@ -36,9 +40,11 @@
 
             while (!_ppu.FrameReady)
             {
-                int cycles = _cpu.ExecuteInstruction();
-                _timer.Tick(cycles);
-                _ppu.Tick(cycles);
+                int leftover = _cpu.ExecuteInstruction();
+
+                if (leftover > 0)
+                    TickCycles(leftover);
+
                 HandleInterrupts();
             }
 
