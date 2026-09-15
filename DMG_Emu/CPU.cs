@@ -2039,19 +2039,19 @@ public class CPU
         FlagZ = r == 0;
         FlagN = false;
         FlagH = false;
-        return 8;
+        return 0;
     }
 
     private int RLC_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         FlagC = (value & 0x80) != 0;
         value = (byte)((value << 1) | (value >> 7));
         FlagZ = value == 0;
         FlagN = false;
         FlagH = false;
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     private int RRC_r(ref byte r)
@@ -2061,19 +2061,19 @@ public class CPU
         FlagZ = r == 0;
         FlagN = false;
         FlagH = false;
-        return 8;
+        return 0;
     }
 
     private int RRC_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         FlagC = (value & 0x01) != 0;
         value = (byte)((value >> 1) | (value << 7));
         FlagZ = value == 0;
         FlagN = false;
         FlagH = false;
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     private int RL_r(ref byte r)
@@ -2084,20 +2084,20 @@ public class CPU
         FlagZ = r == 0;
         FlagN = false;
         FlagH = false;
-        return 8;
+        return 0;
     }
 
     private int RL_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         byte oldCarry = (byte)(FlagC ? 1 : 0);
         FlagC = (value & 0x80) != 0;
         value = (byte)((value << 1) | oldCarry);
         FlagZ = value == 0;
         FlagN = false;
         FlagH = false;
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     private int RR_r(ref byte r)
@@ -2108,20 +2108,20 @@ public class CPU
         FlagZ = r == 0;
         FlagN = false;
         FlagH = false;
-        return 8;
+        return 0;
     }
 
     private int RR_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         byte oldCarry = (byte)(FlagC ? 1 : 0);
         FlagC = (value & 0x01) != 0;
         value = (byte)((value >> 1) | (oldCarry << 7));
         FlagZ = value == 0;
         FlagN = false;
         FlagH = false;
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     private int SLA_r(ref byte r)
@@ -2131,19 +2131,19 @@ public class CPU
         FlagZ = r == 0;
         FlagN = false;
         FlagH = false;
-        return 8;
+        return 0;
     }
 
     private int SLA_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         FlagC = (value & 0x80) != 0;
         value = (byte)(value << 1);
         FlagZ = value == 0;
         FlagN = false;
         FlagH = false;
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     private int SRA_r(ref byte r)
@@ -2153,19 +2153,19 @@ public class CPU
         FlagZ = r == 0;
         FlagN = false;
         FlagH = false;
-        return 8;
+        return 0;
     }
 
     private int SRA_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         FlagC = (value & 0x01) != 0;
         value = (byte)((value & 0x80) | (value >> 1)); // Preserve the MSB
         FlagZ = value == 0;
         FlagN = false;
         FlagH = false;
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     private int SWAP_r(ref byte r)
@@ -2175,19 +2175,19 @@ public class CPU
         FlagN = false;
         FlagH = false;
         FlagC = false;
-        return 8;
+        return 0;
     }
 
     private int SWAP_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         value = (byte)((value << 4) | (value >> 4));
         FlagZ = value == 0;
         FlagN = false;
         FlagH = false;
         FlagC = false;
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     private int SRL_r(ref byte r)
@@ -2197,19 +2197,19 @@ public class CPU
         FlagZ = r == 0;
         FlagN = false;
         FlagH = false;
-        return 8;
+        return 0;
     }
 
     private int SRL_HL()
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         FlagC = (value & 0x01) != 0;
         value = (byte)(value >> 1);
         FlagZ = value == 0;
         FlagN = false;
         FlagH = false;
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     private int BIT_bit_r(int bit, byte r)
@@ -2217,44 +2217,44 @@ public class CPU
         FlagZ = (r & (1 << bit)) == 0;
         FlagN = false;
         FlagH = true;
-        return 8;
+        return 0;
     }
 
     private int BIT_bit_HL(int bit)
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         FlagZ = (value & (1 << bit)) == 0;
         FlagN = false;
         FlagH = true;
-        return 12;
+        return 0;
     }
 
     private int RES_bit_r(int bit, ref byte r)
     {
         r = (byte)(r & ~(1 << bit));
-        return 8;
+        return 0;
     }
 
     private int RES_bit_HL(int bit)
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         value = (byte)(value & ~(1 << bit));
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     private int SET_bit_r(int bit, ref byte r)
     {
         r = (byte)(r | (1 << bit));
-        return 8;
+        return 0;
     }
 
     private int SET_bit_HL(int bit)
     {
-        byte value = _mmu.Read(HL);
+        byte value = ReadCycle(HL);
         value = (byte)(value | (1 << bit));
-        _mmu.Write(HL, value);
-        return 16;
+        WriteCycle(HL, value);
+        return 0;
     }
 
     // ---
