@@ -163,6 +163,11 @@ public class MMU
         _io[0x0F] = flags;
     }
 
+    public void TickCartridge(int cycles)
+    {
+        _cartridge.Tick(cycles);
+    }
+
     // Serialization and Deserialization
     public void SerializeState(BinaryWriter writer)
     {

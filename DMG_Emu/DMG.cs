@@ -27,6 +27,7 @@
     {
         _timer.Tick(cycles);
         _ppu.Tick(cycles);
+        _mmu.TickCartridge(cycles);
     }
 
     public void Run()

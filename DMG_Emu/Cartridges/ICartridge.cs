@@ -9,6 +9,8 @@
     void SetSRAM(byte[] saveData);
     bool HasBattery();
 
+    void Tick(int cycles);
+
     void SerializeState(BinaryWriter writer);
     void DeserializeState(BinaryReader reader);
 }

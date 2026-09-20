@@ -12,7 +12,7 @@ internal class Program
         /*byte[] rom = File.ReadAllBytes("Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2).gb");*/
         /*byte[] rom = File.ReadAllBytes("Tetris (Japan) (En).gb");*/
 
-        string romPath = "mem-timming - 02/mem_timing.gb";
+        string romPath = "Game/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb";
         /*cpu_instrs/cpu_instrs.gb
         mem-timming - 01/01-read_timing.gb
         mem-timming - 01/02-write_timing.gb
@@ -39,5 +39,6 @@ internal class Program
         DMG dmg = new DMG(mmu, romPath);
 
         dmg.Run();
+        SaveManager.SaveData(romPath, cartridge);
     }
 }

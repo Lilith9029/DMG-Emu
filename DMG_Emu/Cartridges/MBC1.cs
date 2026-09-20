@@ -2,16 +2,18 @@
 {
     private readonly byte[] _rom;
     private readonly byte[] _ram;
+    private readonly bool _hasBattery;
 
     private bool _ramEnabled = false;
     private byte _romBankLower = 1; // Default to bank 1
     private byte _ramBankOrRomBankHigh;
     private byte _bankingMode = 0; // 0 = ROM mode, 1 = RAM mode
 
-    public MBC1(byte[] romData, int ramSize)
+    public MBC1(byte[] romData, int ramSize, bool hasBattery)
     {
         _rom = romData;
         _ram = new byte[ramSize];
+        _hasBattery = hasBattery;
     }
 
     public byte ReadROM(ushort address)
@@ -98,7 +100,12 @@
 
     public bool HasBattery()
     {
-        return _ram != null && _ram.Length > 0;
+        return _hasBattery;
+    }
+
+    public void Tick(int cycles)
+    {
+        // do nothing
     }
 
     public void SerializeState(BinaryWriter writer)

@@ -45,6 +45,11 @@
         return false;
     }
 
+    public void Tick(int cycles)
+    {
+        // do nothing
+    }
+
     public void SerializeState(BinaryWriter writer)
     {
         // do nothing
