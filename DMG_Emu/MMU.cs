@@ -14,6 +14,52 @@ public class MMU
     public MMU(ICartridge cartridge)
     {
         _cartridge = cartridge;
+
+        // Joypad & Serial
+        _io[0x00] = 0xCF; // P1/JOYP
+        _io[0x01] = 0x00; // SB
+        _io[0x02] = 0x7E; // SC
+
+        // Timer
+        _io[0x04] = 0xAB; // DIV
+        _io[0x05] = 0x00; // TIMA
+        _io[0x06] = 0x00; // TMA
+        _io[0x07] = 0xF8; // TAC
+
+        // Interrupts Flags
+        _io[0x0F] = 0xE1;
+
+        // Sound Registers
+        _io[0x10] = 0x80; // NR10
+        _io[0x11] = 0xBF; // NR11
+        _io[0x12] = 0xF3; // NR12
+        _io[0x14] = 0xBF; // NR14
+        _io[0x16] = 0x3F; // NR21
+        _io[0x17] = 0x00; // NR22
+        _io[0x19] = 0xBF; // NR24
+        _io[0x1A] = 0x7F; // NR30
+        _io[0x1B] = 0xFF; // NR31
+        _io[0x1C] = 0x9F; // NR32
+        _io[0x1E] = 0xBF; // NR34
+        _io[0x20] = 0xFF; // NR41
+        _io[0x21] = 0x00; // NR42
+        _io[0x22] = 0x00; // NR43
+        _io[0x23] = 0xBF; // NR44
+        _io[0x24] = 0x77; // NR50
+        _io[0x25] = 0xF3; // NR51
+        _io[0x26] = 0xF1; // NR52
+
+        // LCD & PPU Registers
+        _io[0x40] = 0x91; // LCDC
+        _io[0x41] = 0x85; // STAT
+        _io[0x42] = 0x00; // SCY
+        _io[0x43] = 0x00; // SCX
+        _io[0x45] = 0x00; // LYC
+        _io[0x47] = 0xFC; // BGP
+        _io[0x48] = 0xFF; // OBP0
+        _io[0x49] = 0xFF; // OBP1
+        _io[0x4A] = 0x00; // WY
+        _io[0x4B] = 0x00; // WX
     }
 
     public byte Read(ushort address)

@@ -8,6 +8,7 @@
 
     public bool FrameReady { get; private set; }
     private byte ly = 0;
+    private byte _lastLyForStat = 0xFF;
 
     private static readonly (byte r, byte g, byte b)[] _color = {
         (155, 188, 15), // White
@@ -26,6 +27,16 @@
 
     public void Tick(int cycles)
     {
+        byte lcdc = _mmu.Read(0xFF40);
+        if ((lcdc & 0x80) == 0)
+        {
+            ly = 0;
+            _mmu.IncrementLY(0);
+            _cycles = 0;
+            _mode = 0;
+            return;
+        }
+
         _cycles += cycles;
 
         if (ly < 144)
@@ -75,9 +86,10 @@
         {
             stat |= 0x04;
 
-            if ((stat & 0x40) != 0)
+            if ((stat & 0x40) != 0 && _lastLyForStat != ly)
             {
                 _mmu.RequestInterrupt(1);
+                _lastLyForStat = ly;
             }
         }
         else
