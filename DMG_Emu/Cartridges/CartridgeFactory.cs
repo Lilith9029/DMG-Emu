@@ -14,13 +14,14 @@
         };
 
         bool hasRtc = cartType == 0x0F || cartType == 0x10;
-        bool hasBattery = cartType is 0x03 or 0x0F or 0x10 or 0x13;
+        bool hasBattery = cartType is 0x03 or 0x0F or 0x10 or 0x13 or 0x1B or 0x1E;
 
         return cartType switch
         {
             0x00 => new RomOnly(romData),
             0x01 or 0x02 or 0x03 => new MBC1(romData, ramSize, hasBattery),
             0x0F or 0x10 or 0x11 or 0x12 or 0x13 => new MBC3(romData, ramSize, hasRtc, hasBattery),
+            0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new MBC5(romData, ramSize, hasBattery),
             // More cartridge types here
             _ => throw new NotSupportedException($"Cartridge type {cartType:X2} is not supported."),
         };

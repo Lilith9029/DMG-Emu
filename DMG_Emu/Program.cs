@@ -7,18 +7,24 @@ internal class Program
     static void Main(string[] args)
     {
         // Game Test ROMs
-        /*Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb"*/
-        /*Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb*/
-        /*Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2).gb*/
+        // MBC0
         /*Tetris (Japan) (En).gb*/
-        /*Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc*/
 
-        string romPath = "Game/Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc";
-        /*cpu_instrs/cpu_instrs.gb
-        mem-timming - 01/01-read_timing.gb
-        mem-timming - 01/02-write_timing.gb
-        mem-timming - 01/03-modify_timing.gb
-        mem-timming - 01/mem_timing.gb*/
+        // MBC1
+        /*Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2).gb*/
+
+        // MBC3
+        /*Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb*/
+        /*Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc*/
+        /*Pokemon - Gold Version(USA, Europe)(SGB Enhanced)(GB Compatible).gbc*/
+
+        // MBC5
+        /*Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).gbc*/
+        /*Pokemon Trading Card Game(USA) (SGB Enhanced).gbc*/
+
+        /*Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb"*/
+
+        string romPath = "Game/Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).gbc";
 
         if (!File.Exists(romPath))
         {

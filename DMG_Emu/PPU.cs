@@ -95,6 +95,7 @@
         else
         {
             stat &= 0xFB;
+            _lastLyForStat = 0xFF;
         }
 
         _mmu.Write(0xFF41, stat);
