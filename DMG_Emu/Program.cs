@@ -1,7 +1,3 @@
-using DMG_Emu.Services;
-
-namespace DMG_Emu;
-
 internal class Program
 {
     static void Main(string[] args)
@@ -29,7 +25,7 @@ internal class Program
 
         /*Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb"*/
 
-        string romPath = "Game/Kirby's Pinball Land (USA).gb";
+        string romPath = "game/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb";
 
         if (!File.Exists(romPath))
         {

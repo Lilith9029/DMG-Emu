@@ -1,6 +1,7 @@
 public class MMU
 {
     public Joypad? Joypad { get; set; }
+    public APU? APU { get; set; }
 
     private ICartridge _cartridge;
 
@@ -28,26 +29,6 @@ public class MMU
 
         // Interrupts Flags
         _io[0x0F] = 0xE1;
-
-        // Sound Registers
-        _io[0x10] = 0x80; // NR10
-        _io[0x11] = 0xBF; // NR11
-        _io[0x12] = 0xF3; // NR12
-        _io[0x14] = 0xBF; // NR14
-        _io[0x16] = 0x3F; // NR21
-        _io[0x17] = 0x00; // NR22
-        _io[0x19] = 0xBF; // NR24
-        _io[0x1A] = 0x7F; // NR30
-        _io[0x1B] = 0xFF; // NR31
-        _io[0x1C] = 0x9F; // NR32
-        _io[0x1E] = 0xBF; // NR34
-        _io[0x20] = 0xFF; // NR41
-        _io[0x21] = 0x00; // NR42
-        _io[0x22] = 0x00; // NR43
-        _io[0x23] = 0xBF; // NR44
-        _io[0x24] = 0x77; // NR50
-        _io[0x25] = 0xF3; // NR51
-        _io[0x26] = 0xF1; // NR52
 
         // LCD & PPU Registers
         _io[0x40] = 0x91; // LCDC
@@ -87,6 +68,9 @@ public class MMU
 
         if (address < 0xFF80) // IO Registers
         {
+            if (address >= 0xFF10 && address <= 0xFF3F)
+                return APU?.ReadRegister(address) ?? 0xFF;
+
             if (address == 0xFF00)
                 return Joypad?.Read() ?? 0xFF;
 
@@ -151,6 +135,12 @@ public class MMU
 
         if (address < 0xFF80) // IO Registers
         {
+            if (address >= 0xFF10 && address <= 0xFF3F)
+            {
+                APU?.WriteRegister(address, value);
+                return;
+            }
+
             if (address == 0xFF00)
             {
                 Joypad?.Write(value);

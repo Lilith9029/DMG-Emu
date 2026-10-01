@@ -1,5 +1,4 @@
-﻿using DMG_Emu.Services;
-using SDL2;
+﻿using SDL2;
 
 public class RendererDMG
 {

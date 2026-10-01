@@ -6,6 +6,7 @@
     public Timer _timer;
     public RendererDMG _renderer;
     public PPU _ppu;
+    public APU _apu;
 
     private readonly string _romPath;
 
@@ -13,6 +14,9 @@
     {
         _mmu = mmu;
         _romPath = romPath;
+
+        _apu = new APU(_mmu);
+        _mmu.APU = _apu;
 
         _joypad = new Joypad(_mmu);
         _mmu.Joypad = _joypad;
@@ -26,6 +30,7 @@
     public void TickCycles(int cycles)
     {
         _timer.Tick(cycles);
+        _apu.Tick(cycles);
         _ppu.Tick(cycles);
         _mmu.TickCartridge(cycles);
     }
@@ -59,6 +64,7 @@
         }
 
         _renderer.Destroy();
+        _apu.Dispose();
     }
 
     private void HandleInterrupts()
@@ -85,6 +91,7 @@
 
                 _timer.Tick(dispatchCycles);
                 _ppu.Tick(dispatchCycles);
+                _apu.Tick(dispatchCycles);
 
                 return;
             }

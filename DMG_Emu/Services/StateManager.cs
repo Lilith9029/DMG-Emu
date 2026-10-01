@@ -1,6 +1,4 @@
-﻿namespace DMG_Emu.Services;
-
-internal class StateManager
+﻿public static class StateManager
 {
     private const uint MagicNumber = 0x316C314C;
     private const ushort Version = 1;

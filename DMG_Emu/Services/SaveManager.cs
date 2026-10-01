@@ -1,6 +1,4 @@
-﻿namespace DMG_Emu.Services;
-
-public static class SaveManager
+﻿public static class SaveManager
 {
     public static void LoadSaveData(string romPath, ICartridge cartridge)
     {
