@@ -3,8 +3,8 @@
     public byte NR10 = 0x80; // Sweep
     public byte NR11 = 0xBF; // Duty + length data
     public byte NR12 = 0xF3; // Envelope
-    public byte NR13 = 0xFF;  // Frequency low
-    public byte NR14 = 0xBF;  // Frequency high + Trigger + Length enable
+    public byte NR13 = 0xFF; // Frequency low
+    public byte NR14 = 0xBF; // Frequency high + Trigger + Length enable
 
     public bool Enabled { get; private set; } = false;
     public bool DacEnabled => (NR12 & 0xF8) != 0;

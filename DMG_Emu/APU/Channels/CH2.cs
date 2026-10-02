@@ -2,8 +2,8 @@
 {
     public byte NR21 = 0x3F; // Duty + length data
     public byte NR22 = 0x00; // Envelope
-    public byte NR23 = 0xFF;  // Frequency low
-    public byte NR24 = 0xBF;  // Frequency high + Trigger + Length enable
+    public byte NR23 = 0xFF; // Frequency low
+    public byte NR24 = 0xBF; // Frequency high + Trigger + Length enable
 
     public bool Enabled { get; private set; } = false;
     public bool DacEnabled => (NR22 & 0xF8) != 0;

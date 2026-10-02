@@ -1,10 +1,10 @@
 ﻿public class CH3
 {
-    public byte NR30 = 0x7F;
-    public byte NR31 = 0xFF;
-    public byte NR32 = 0x9F;
-    public byte NR33 = 0xFF;
-    public byte NR34 = 0xBF;
+    public byte NR30 = 0x7F; // DAC enable
+    public byte NR31 = 0xFF; // Length
+    public byte NR32 = 0x9F; // Volume
+    public byte NR33 = 0xFF; // Frequency low
+    public byte NR34 = 0xBF; // Frequency high + Trigger + Length enable
 
     public byte[]WaveRam = new byte[16];
 

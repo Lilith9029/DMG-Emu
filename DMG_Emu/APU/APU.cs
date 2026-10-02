@@ -7,6 +7,7 @@ public class APU : IDisposable
     public CH1 ch1 = new CH1();
     public CH2 ch2 = new CH2();
     public CH3 ch3 = new CH3();
+    public CH4 ch4 = new CH4();
 
     public byte NR50 = 0x77;
     public byte NR51 = 0xF3;
@@ -42,6 +43,7 @@ public class APU : IDisposable
         ch1.TickTimer(cycles);
         ch2.TickTimer(cycles);
         ch3.TickTimer(cycles);
+        ch4.TickTimer(cycles);
 
         _sampleAccumulator += cycles;
         while (_sampleAccumulator >= CyclesPerSample)
@@ -60,6 +62,7 @@ public class APU : IDisposable
                 ch1.TickLength();
                 ch2.TickLength();
                 ch3.TickLength();
+                ch4.TickLength();
                 break;
             case 2:
             case 6:
@@ -67,10 +70,12 @@ public class APU : IDisposable
                 ch1.TickSweep();
                 ch2.TickLength();
                 ch3.TickLength();
+                ch4.TickLength();
                 break;
             case 7:
                 ch1.TickEnvelope();
                 ch2.TickEnvelope();
+                ch4.TickEnvelope();
                 break;
         }
         _frameSequencerStep = (_frameSequencerStep + 1) & 7;
@@ -81,8 +86,9 @@ public class APU : IDisposable
         byte s1 = ch1.GetSample();
         byte s2 = ch2.GetSample();
         byte s3 = ch3.GetSample();
+        byte s4 = ch4.GetSample();
 
-        float sample = (s1 + s2 + s3) / 45.0f;
+        float sample = (s1 + s2 + s3 + s4) / 60.0f;
         short pcm = (short)((sample * 2.0f - 1.0f) * 16000);
 
         _sampleBuffer[_sampleBufferIndex++] = pcm; // Left
@@ -113,12 +119,17 @@ public class APU : IDisposable
             0xFF1C => (byte)(ch3.NR32 | 0x9F),
             0xFF1D => 0xFF,
             0xFF1E => (byte)(ch3.NR34 | 0xBF),
+            0xFF20 => 0xFF,
+            0xFF21 => ch4.NR42,
+            0xFF22 => ch4.NR43,
+            0xFF23 => (byte)(ch4.NR44 | 0xBF),
             0xFF24 => NR50,
             0xFF25 => NR51,
             0xFF26 => (byte)((_power ? 0x80 : 0x00) | 0x70
             | (ch1.Enabled ? 0x01 : 0x00)
             | (ch2.Enabled ? 0x02 : 0x00)
-            | (ch3.Enabled ? 0x04 : 0x00)),
+            | (ch3.Enabled ? 0x04 : 0x00)
+            | (ch4.Enabled ? 0x08 : 0x00)),
             _ => 0xFF
         };
     }
@@ -172,6 +183,21 @@ public class APU : IDisposable
             case 0xFF1E:
                 ch3.WriteNR34(value);
                 break;
+            case >= 0xFF30 and <= 0xFF3F:
+                ch3.WaveRam[address - 0xFF30] = value;
+                break;
+            case 0xFF20:
+                ch4.WriteLength(value);
+                break;
+            case 0xFF21:
+                ch4.WriteEnvelope(value);
+                break;
+            case 0xFF22:
+                ch4.NR43 = value;
+                break;
+            case 0xFF23:
+                ch4.WriteNR44(value);
+                break;
             case 0xFF24:
                 NR50 = value;
                 break;
@@ -186,6 +212,7 @@ public class APU : IDisposable
                     ch1.PowerOff();
                     ch2.PowerOff();
                     ch3.PowerOff();
+                    ch4.PowerOff();
 
                     NR50 = 0x00;
                     NR51 = 0x00;
