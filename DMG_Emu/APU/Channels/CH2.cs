@@ -99,6 +99,13 @@
         _lengthCounter = 64 - (value & 0x3F);
     }
 
+    public void WriteNR24(byte value)
+    {
+        NR24 = value;
+        if ((value & 0x80) != 0)
+            Trigger();
+    }
+
     public void PowerOff()
     {
         NR21 = 0x00;

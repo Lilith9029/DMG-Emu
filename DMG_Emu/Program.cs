@@ -25,7 +25,7 @@ internal class Program
 
         /*Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb"*/
 
-        string romPath = "dmg_sound/dmg_sound.gb";
+        string romPath = "game/Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc";
 
         if (!File.Exists(romPath))
         {

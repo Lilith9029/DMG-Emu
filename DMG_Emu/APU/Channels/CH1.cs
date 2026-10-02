@@ -175,6 +175,13 @@
             Enabled = false;
     }
 
+    public void WriteNR14(byte value)
+    {
+        NR14 = value;
+        if ((value & 0x80) != 0)
+            Trigger();
+    }
+
     public void PowerOff()
     {
         NR10 = 0x00;
