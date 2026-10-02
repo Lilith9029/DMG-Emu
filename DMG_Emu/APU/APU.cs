@@ -4,7 +4,12 @@ public class APU : IDisposable
 {
     private MMU _mmu;
 
+    public CH1 ch1 = new CH1();
     public CH2 ch2 = new CH2();
+
+    public byte NR50 = 0x77;
+    public byte NR51 = 0xF3;
+    private bool _power = true;
 
     private bool _lastDivBit4 = false;
     private int _frameSequencerStep = 0;
@@ -33,6 +38,7 @@ public class APU : IDisposable
 
             _lastDivBit4 = bit4;
         }
+        ch1.TickTimer(cycles);
         ch2.TickTimer(cycles);
 
         _sampleAccumulator += cycles;
@@ -48,12 +54,18 @@ public class APU : IDisposable
         switch (_frameSequencerStep)
         {
             case 0:
-            case 2:
             case 4:
+                ch1.TickLength();
+                ch2.TickLength();
+                break;
+            case 2:
             case 6:
+                ch1.TickLength();
+                ch1.TickSweep();
                 ch2.TickLength();
                 break;
             case 7:
+                ch1.TickEnvelope();
                 ch2.TickEnvelope();
                 break;
         }
@@ -62,12 +74,11 @@ public class APU : IDisposable
 
     public void GenerateAudioSample()
     {
+        byte s1 = ch1.GetSample();
         byte s2 = ch2.GetSample();
 
-        /*float sample = s2 / 15.0f;
-        short pcm = (short)((sample * 2.0f - 1.0f) * 16000);*/
-
-        short pcm = ch2.Enabled ? (short)((s2 / 15.0f * 2.0f - 1.0f) * 16000) : (short)0;
+        float sample = (s1 + s2) / 30.0f;
+        short pcm = (short)((sample * 2.0f - 1.0f) * 16000);
 
         _sampleBuffer[_sampleBufferIndex++] = pcm; // Left
         _sampleBuffer[_sampleBufferIndex++] = pcm; // Right
@@ -83,18 +94,48 @@ public class APU : IDisposable
     {
         return address switch
         {
+            0xFF10 => (byte)(ch1.NR10 | 0x80),
+            0xFF11 => (byte)(ch1.NR11 | 0x3F),
+            0xFF12 => ch1.NR12,
+            0xFF13 => 0xFF,
+            0xFF14 => (byte)(ch1.NR14 | 0xBF),
             0xFF16 => (byte)(ch2.NR21 | 0x3F),
             0xFF17 => ch2.NR22,
             0xFF18 => 0xFF,
             0xFF19 => (byte)(ch2.NR24 | 0xBF),
+            0xFF24 => NR50,
+            0xFF25 => NR51,
+            0xFF26 => (byte)((_power ? 0x80 : 0x00) | 0x70
+            | (ch1.Enabled ? 0x01 : 0x00)
+            | (ch2.Enabled ? 0x02 : 0x00)),
             _ => 0xFF
         };
     }
 
     public void WriteRegister(ushort address, byte value)
     {
+        if (!_power && address != 0xFF26)
+            return;
+
         switch (address)
         {
+            case 0xFF10:
+                ch1.WriteSweep(value);
+                break;
+            case 0xFF11:
+                ch1.WriteLength(value);
+                break;
+            case 0xFF12:
+                ch1.WriteEnvelope(value);
+                break;
+            case 0xFF13:
+                ch1.NR13 = value;
+                break;
+            case 0xFF14:
+                ch1.NR14 = value;
+                if ((value & 0x80) != 0)
+                    ch1.Trigger();
+                break;
             case 0xFF16:
                 ch2.WriteLength(value);
                 break;
@@ -109,7 +150,30 @@ public class APU : IDisposable
                 if ((value & 0x80) != 0)
                     ch2.Trigger();
                 break;
+            case 0xFF24:
+                NR50 = value;
+                break;
+            case 0xFF25:
+                NR51 = value;
+                break;
+            case 0xFF26:
+                bool newPower = (value & 0x80) != 0;
 
+                if (_power && !newPower)
+                {
+                    ch1.PowerOff();
+                    ch2.PowerOff();
+
+                    NR50 = 0x00;
+                    NR51 = 0x00;
+                }
+                else if (!_power && newPower)
+                {
+                    _frameSequencerStep = 0;
+                }
+
+                _power = newPower;
+                break;
         }
     }
 

@@ -52,14 +52,6 @@
         }
     }
 
-    public byte GetSample()
-    {
-        if (!Enabled) return 0;
-
-        int duty = (NR21 >> 6) & 0x03;
-        return DutyPatterns[duty][_dutyStep] != 0 ? (byte)_currentVolume : (byte)0;
-    }
-
     public void TickLength()
     {
         if (LengthEnable && _lengthCounter > 0)
@@ -86,6 +78,13 @@
                 _currentVolume--;
         }
     }
+    public byte GetSample()
+    {
+        if (!Enabled) return 0;
+
+        int duty = (NR21 >> 6) & 0x03;
+        return DutyPatterns[duty][_dutyStep] != 0 ? (byte)_currentVolume : (byte)0;
+    }
 
     public void WriteEnvelope(byte value)
     {
@@ -98,5 +97,14 @@
     {
         NR21 = value;
         _lengthCounter = 64 - (value & 0x3F);
+    }
+
+    public void PowerOff()
+    {
+        NR21 = 0x00;
+        NR22 = 0x00;
+        NR23 = 0x00;
+        NR24 = 0x00;
+        Enabled = false;
     }
 }
