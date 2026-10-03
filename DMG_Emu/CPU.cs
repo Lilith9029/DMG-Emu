@@ -1359,8 +1359,9 @@ public class CPU
     // JP (Jump) instructions
     private int JP_NZ_a16()
     {
-        if (!FlagZ) { PC = Fetch16(); return 4; }
-        PC += 2;
+        ushort addr = Fetch16();    
+        if (!FlagZ) { PC = addr; return 4; }
+        /*PC += 2;*/
         return 0;
     }
 
@@ -1372,22 +1373,25 @@ public class CPU
 
     private int JP_Z_a16()
     {
-        if (FlagZ) { PC = Fetch16(); return 4; }
-        PC += 2;
+        ushort addr = Fetch16();
+        if (FlagZ) { PC = addr; return 4; }
+        /*PC += 2;*/
         return 0;
     }
 
     private int JP_NC_a16()
     {
-        if (!FlagC) { PC = Fetch16(); return 4; }
-        PC += 2;
+        ushort addr = Fetch16();
+        if (!FlagC) { PC = addr; return 4; }
+        /*PC += 2;*/
         return 0;
     }
 
     private int JP_C_a16()
     {
-        if (FlagC) { PC = Fetch16(); return 4; }
-        PC += 2;
+        ushort addr = Fetch16();
+        if (FlagC) { PC = addr; return 4; }
+        /*PC += 2;*/
         return 0;
     }
 
