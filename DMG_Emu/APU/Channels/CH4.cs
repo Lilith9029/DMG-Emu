@@ -1,4 +1,4 @@
-﻿public class CH4
+public class CH4
 {
     public byte NR41 = 0xFF; // Length
     public byte NR42 = 0x00; // Envelope
@@ -19,16 +19,19 @@
     private int _currentVolume = 0;
     private int _envelopeTimer = 0;
 
-    public void Trigger()
+    public void Trigger(bool nextStepOdd)
     {
-        Console.WriteLine("[CH4] Trigger called!"); // remmber to remove >:(
         Enabled = DacEnabled;
 
         _lfsr = 0x7FFF;
         _frequencyTimer = GetTimerPeriod();
 
         if (_lengthCounter == 0)
+        {
             _lengthCounter = 64;
+            if (LengthEnable && nextStepOdd)
+                _lengthCounter--;
+        }
 
         _currentVolume = NR42 >> 4;
         _envelopeTimer = NR42 & 0x07;
@@ -104,16 +107,25 @@
         _lengthCounter = 64 - (value & 0x3F);
     }
 
-    public void WriteNR44(byte value)
+    public void WriteNR44(byte value, bool nextStepOdd)
     {
+        bool oldLen = LengthEnable;
         NR44 = value;
-        if ((value & 0x80) != 0)
-            Trigger();
+        bool trigger = (value & 0x80) != 0;
+
+        if (!oldLen && LengthEnable && nextStepOdd && _lengthCounter > 0)
+        {
+            _lengthCounter--;
+            if (_lengthCounter == 0 && !trigger)
+                Enabled = false;
+        }
+
+        if (trigger)
+            Trigger(nextStepOdd);
     }
 
     public void PowerOff()
     {
-        NR41 = 0x00;
         NR42 = 0x00;
         NR43 = 0x00;
         NR44 = 0x00;

@@ -15,14 +15,16 @@
         _mmu = mmu;
         _romPath = romPath;
 
-        _apu = new APU(_mmu);
-        _mmu.APU = _apu;
-
         _joypad = new Joypad(_mmu);
         _mmu.Joypad = _joypad;
 
-        _cpu = new CPU(_mmu, TickCycles);
+        _apu = new APU(_mmu);
+        _mmu.APU = _apu;
+
         _timer = new Timer(_mmu);
+        _mmu.Timer = _timer;
+
+        _cpu = new CPU(_mmu, TickCycles);
         _ppu = new PPU(_mmu);
         _renderer = new RendererDMG();
     }

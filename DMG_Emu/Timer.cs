@@ -45,6 +45,11 @@
         }
     }
 
+    public void ResetDiv()
+    {
+        _divCounter = 0;
+    }
+
     // State serialization and deserialization
     public void SerializeState(BinaryWriter writer)
     {

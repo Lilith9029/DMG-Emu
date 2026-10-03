@@ -2,6 +2,7 @@ public class MMU
 {
     public Joypad? Joypad { get; set; }
     public APU? APU { get; set; }
+    public Timer? Timer { get; set; }
 
     private ICartridge _cartridge;
 
@@ -149,6 +150,7 @@ public class MMU
 
             if (address == 0xFF04)
             {
+                Timer?.ResetDiv();
                 _io[0x04] = 0;
                 return;
             }

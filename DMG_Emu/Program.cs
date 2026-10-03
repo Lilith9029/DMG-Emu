@@ -1,4 +1,4 @@
-internal class Program
+﻿internal class Program
 {
     static void Main(string[] args)
     {
@@ -25,7 +25,10 @@ internal class Program
 
         /*Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb"*/
 
-        string romPath = "dmg_sound/11-regs after power.gb";
+        /*if (args.Contains("--sweep")) { Tests.Sweep(); return; }
+        if (args.Contains("--all")) { Tests.RunAll(); return; }*/
+
+        string romPath = "game/Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).gbc";
 
         if (!File.Exists(romPath))
         {

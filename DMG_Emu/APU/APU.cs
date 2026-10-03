@@ -40,10 +40,14 @@ public class APU : IDisposable
 
             _lastDivBit4 = bit4;
         }
-        ch1.TickTimer(cycles);
-        ch2.TickTimer(cycles);
-        ch3.TickTimer(cycles);
-        ch4.TickTimer(cycles);
+
+        if (_power)
+        {
+            ch1.TickTimer(cycles);
+            ch2.TickTimer(cycles);
+            ch3.TickTimer(cycles);
+            ch4.TickTimer(cycles);
+        }
 
         _sampleAccumulator += cycles;
         while (_sampleAccumulator >= CyclesPerSample)
@@ -130,14 +134,39 @@ public class APU : IDisposable
             | (ch2.Enabled ? 0x02 : 0x00)
             | (ch3.Enabled ? 0x04 : 0x00)
             | (ch4.Enabled ? 0x08 : 0x00)),
+            >= 0xFF30 and <= 0xFF3F => ch3.ReadWaveRam(address - 0xFF30),
             _ => 0xFF
         };
     }
 
     public void WriteRegister(ushort address, byte value)
     {
-        if (!_power && address != 0xFF26)
-            return;
+        if (!_power)
+        {
+            switch (address)
+            {
+                case 0xFF26:
+                    break;
+                case 0xFF11:
+                    ch1.WriteLengthOnly(value);
+                    return;
+                case 0xFF16:
+                    ch2.WriteLengthOnly(value);
+                    return;
+                case 0xFF1B:
+                    ch3.WriteLength(value);
+                    return;
+                case 0xFF20:
+                    ch4.WriteLength(value);
+                    return;
+                case >= 0xFF30 and <= 0xFF3F:
+                    break;
+                default:
+                    return;
+            }
+        }
+
+        bool odd = (_frameSequencerStep & 1) != 0;
 
         switch (address)
         {
@@ -154,7 +183,7 @@ public class APU : IDisposable
                 ch1.NR13 = value;
                 break;
             case 0xFF14:
-                ch1.WriteNR14(value);
+                ch1.WriteNR14(value, odd);
                 break;
             case 0xFF16:
                 ch2.WriteLength(value);
@@ -166,7 +195,7 @@ public class APU : IDisposable
                 ch2.NR23 = value;
                 break;
             case 0xFF19:
-                ch2.WriteNR24(value);
+                ch2.WriteNR24(value, odd);
                 break;
             case 0xFF1A:
                 ch3.WriteNR30(value);
@@ -181,10 +210,10 @@ public class APU : IDisposable
                 ch3.NR33 = value;
                 break;
             case 0xFF1E:
-                ch3.WriteNR34(value);
+                ch3.WriteNR34(value, odd);
                 break;
             case >= 0xFF30 and <= 0xFF3F:
-                ch3.WaveRam[address - 0xFF30] = value;
+                ch3.WriteWaveRam(address - 0xFF30, value);
                 break;
             case 0xFF20:
                 ch4.WriteLength(value);
@@ -196,7 +225,7 @@ public class APU : IDisposable
                 ch4.NR43 = value;
                 break;
             case 0xFF23:
-                ch4.WriteNR44(value);
+                ch4.WriteNR44(value, odd);
                 break;
             case 0xFF24:
                 NR50 = value;

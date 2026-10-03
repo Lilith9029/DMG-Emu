@@ -1,4 +1,4 @@
-﻿public class CH2
+public class CH2
 {
     public byte NR21 = 0x3F; // Duty + length data
     public byte NR22 = 0x00; // Envelope
@@ -25,16 +25,19 @@
     private int _currentVolume = 0;
     private int _envelopeTimer = 0;
 
-    public void Trigger()
+    public void Trigger(bool nextStepOdd)
     {
-        Console.WriteLine("[CH2] Trigger called!"); // remmber to remove >:(
         Enabled = DacEnabled;
 
         int rawFreq = NR23 | ((NR24 & 0x07) << 8);
         _frequencyTimer = (2048 - rawFreq) * 4;
 
         if (_lengthCounter == 0)
+        {
             _lengthCounter = 64;
+            if (LengthEnable && nextStepOdd)
+                _lengthCounter--;
+        }
 
         _currentVolume = NR22 >> 4;
         _envelopeTimer = NR22 & 0x07;
@@ -99,19 +102,37 @@
         _lengthCounter = 64 - (value & 0x3F);
     }
 
-    public void WriteNR24(byte value)
+    public void WriteNR24(byte value, bool nextStepOdd)
     {
+        bool oldLen = LengthEnable;
         NR24 = value;
-        if ((value & 0x80) != 0)
-            Trigger();
+        bool trigger = (value & 0x80) != 0;
+
+        if (!oldLen && LengthEnable && nextStepOdd && _lengthCounter > 0)
+        {
+            _lengthCounter--;
+            if (_lengthCounter == 0 && !trigger)
+                Enabled = false;
+        }
+
+        if (trigger)
+            Trigger(nextStepOdd);
+    }
+
+    public void WriteLengthOnly(byte value)
+    {
+        NR21 = (byte)((NR21 & 0xC0) | (value & 0x3F));
+        _lengthCounter = 64 - (value & 0x3F);
     }
 
     public void PowerOff()
     {
-        NR21 = 0x00;
+        NR21 = (byte)(NR21 & 0x3F);
         NR22 = 0x00;
         NR23 = 0x00;
         NR24 = 0x00;
         Enabled = false;
+        _currentVolume = 0;
+        _dutyStep = 0;
     }
 }
