@@ -131,4 +131,40 @@ public class CH4
         NR44 = 0x00;
         Enabled = false;
     }
+
+    public void SerializeState(BinaryWriter writer)
+    {
+        writer.Write(NR41);
+        writer.Write(NR42);
+        writer.Write(NR43);
+        writer.Write(NR44);
+
+        writer.Write(Enabled);
+
+        writer.Write(_lfsr);
+        writer.Write(_frequencyTimer);
+
+        writer.Write(_lengthCounter);
+
+        writer.Write(_currentVolume);
+        writer.Write(_envelopeTimer);
+    }
+
+    public void DeserializeState(BinaryReader r)
+    {
+        NR41 = r.ReadByte();
+        NR42 = r.ReadByte();
+        NR43 = r.ReadByte(); 
+        NR44 = r.ReadByte();
+
+        Enabled = r.ReadBoolean();
+
+        _lfsr = r.ReadUInt16(); 
+        _frequencyTimer = r.ReadInt32();
+
+        _lengthCounter = r.ReadInt32();
+
+        _currentVolume = r.ReadInt32(); 
+        _envelopeTimer = r.ReadInt32();
+    }
 }

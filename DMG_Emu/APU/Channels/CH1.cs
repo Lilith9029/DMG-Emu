@@ -212,4 +212,54 @@ public class CH1
         _currentVolume = 0;
         _dutyStep = 0;
     }
+
+    public void SerializeState(BinaryWriter writer)
+    {
+        writer.Write(NR10);
+        writer.Write(NR11);
+        writer.Write(NR12);
+        writer.Write(NR13);
+        writer.Write(NR14);
+
+        writer.Write(Enabled);
+
+        writer.Write(_dutyStep);
+        writer.Write(_frequencyTimer);
+
+        writer.Write(_lengthCounter);
+
+        writer.Write(_currentVolume);
+        writer.Write(_envelopeTimer);
+
+        writer.Write(_shadowFrequency);
+        writer.Write(_sweepTimer);
+
+        writer.Write(_sweepEnabled);
+        writer.Write(_sweepNegateUsed);
+    }
+
+    public void DeserializeState(BinaryReader reader)
+    {
+        NR10 = reader.ReadByte();
+        NR11 = reader.ReadByte();
+        NR12 = reader.ReadByte();
+        NR13 = reader.ReadByte();
+        NR14 = reader.ReadByte();
+
+        Enabled = reader.ReadBoolean();
+
+        _dutyStep = reader.ReadInt32();
+        _frequencyTimer = reader.ReadInt32();
+
+        _lengthCounter = reader.ReadInt32();
+
+        _currentVolume = reader.ReadInt32();
+        _envelopeTimer = reader.ReadInt32();
+
+        _shadowFrequency = reader.ReadInt32();
+        _sweepTimer = reader.ReadInt32();
+
+        _sweepEnabled = reader.ReadBoolean();
+        _sweepNegateUsed = reader.ReadBoolean();
+    }
 }

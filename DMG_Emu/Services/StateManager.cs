@@ -1,7 +1,7 @@
 ﻿public static class StateManager
 {
     private const uint MagicNumber = 0x316C314C;
-    private const ushort Version = 1;
+    private const ushort Version = 2;
 
     public static bool SaveState(string romPath, DMG dmg, int slot = 1)
     {
@@ -19,6 +19,7 @@
             dmg._mmu.SerializeState(writer);
             dmg._timer.SerializeState(writer);
             dmg._ppu.SerializeState(writer);
+            dmg._apu.SerializeState(writer);
 
             Console.WriteLine($"State saved to {slot}: {statePath}");
             return true;
@@ -58,6 +59,7 @@
             dmg._mmu.DeserializeState(reader);
             dmg._timer.DeserializeState(reader);
             dmg._ppu.DeserializeState(reader);
+            dmg._apu.DeserializeState(reader);
 
             Console.WriteLine($"State loaded successfully from {slot}");
             return true;

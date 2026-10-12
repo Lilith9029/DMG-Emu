@@ -9,6 +9,7 @@
     public APU _apu;
 
     private readonly string _romPath;
+    public string? NextRom => _renderer.DroppedRom;
 
     public DMG(MMU mmu, string romPath)
     {

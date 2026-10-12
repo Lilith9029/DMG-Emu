@@ -135,4 +135,40 @@ public class CH2
         _currentVolume = 0;
         _dutyStep = 0;
     }
+
+    public void SerializeState(BinaryWriter writer)
+    {
+        writer.Write(NR21);
+        writer.Write(NR22);
+        writer.Write(NR23);
+
+        writer.Write(NR24);
+        writer.Write(Enabled);
+
+        writer.Write(_dutyStep);
+        writer.Write(_frequencyTimer);
+
+        writer.Write(_lengthCounter);
+
+        writer.Write(_currentVolume);
+        writer.Write(_envelopeTimer);
+    }
+
+    public void DeserializeState(BinaryReader reader)
+    {
+        NR21 = reader.ReadByte();
+        NR22 = reader.ReadByte();
+        NR23 = reader.ReadByte();
+        NR24 = reader.ReadByte();
+
+        Enabled = reader.ReadBoolean();
+
+        _dutyStep = reader.ReadInt32();
+        _frequencyTimer = reader.ReadInt32();
+
+        _lengthCounter = reader.ReadInt32();
+
+        _currentVolume = reader.ReadInt32();
+        _envelopeTimer = reader.ReadInt32();
+    }
 }

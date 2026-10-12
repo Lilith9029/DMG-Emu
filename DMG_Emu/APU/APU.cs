@@ -260,4 +260,37 @@ public class APU : IDisposable
     {
         _audioDevice.Dispose();
     }
+
+    public void SerializeState(BinaryWriter w)
+    {
+        w.Write(NR50);
+        w.Write(NR51);
+
+        w.Write(_power);
+        w.Write(_lastDivBit4); 
+        w.Write(_frameSequencerStep);
+
+        ch1.SerializeState(w);
+        ch2.SerializeState(w);
+        ch3.SerializeState(w);
+        ch4.SerializeState(w);
+    }
+
+    public void DeserializeState(BinaryReader r)
+    {
+        NR50 = r.ReadByte();
+        NR51 = r.ReadByte();
+
+        _power = r.ReadBoolean(); 
+        _lastDivBit4 = r.ReadBoolean();
+        _frameSequencerStep = r.ReadInt32();
+
+        ch1.DeserializeState(r);
+        ch2.DeserializeState(r);
+        ch3.DeserializeState(r);
+        ch4.DeserializeState(r);
+
+        _sampleAccumulator = 0.0;
+        _sampleBufferIndex = 0;
+    }
 }

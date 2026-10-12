@@ -185,4 +185,44 @@ public class CH3
         NR34 = 0x00;
         Enabled = false;
     }
+
+    public void SerializeState(BinaryWriter writer)
+    {
+        writer.Write(NR30);
+        writer.Write(NR31);
+        writer.Write(NR32);
+        writer.Write(NR33);
+        writer.Write(NR34);
+
+        writer.Write(WaveRam);
+
+        writer.Write(Enabled);
+
+        writer.Write(_sampleIndex);
+        writer.Write(_frequencyTimer);
+
+        writer.Write(_lengthCounter);
+
+        writer.Write(_sinceRead);
+    }
+
+    public void DeserializeState(BinaryReader reader)
+    {
+        NR30 = reader.ReadByte();
+        NR31 = reader.ReadByte();
+        NR32 = reader.ReadByte(); 
+        NR33 = reader.ReadByte();
+        NR34 = reader.ReadByte();
+
+        reader.ReadBytes(WaveRam.Length).CopyTo(WaveRam, 0);
+
+        Enabled = reader.ReadBoolean();
+
+        _sampleIndex = reader.ReadInt32();
+        _frequencyTimer = reader.ReadInt32();
+
+        _lengthCounter = reader.ReadInt32();
+
+        _sinceRead = reader.ReadInt32();
+    }
 }

@@ -50,7 +50,6 @@
         _divCounter = 0;
     }
 
-    // State serialization and deserialization
     public void SerializeState(BinaryWriter writer)
     {
         writer.Write(_divCounter);

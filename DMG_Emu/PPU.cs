@@ -284,7 +284,6 @@
         }
     }
 
-    // State Serialization and Deserialization
     public void SerializeState(BinaryWriter writer)
     {
         writer.Write(_cycles);

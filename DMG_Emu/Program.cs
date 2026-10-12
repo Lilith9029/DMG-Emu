@@ -28,28 +28,42 @@
         /*if (args.Contains("--sweep")) { Tests.Sweep(); return; }
         if (args.Contains("--all")) { Tests.RunAll(); return; }*/
 
-        string romPath = "game/Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible).gbc";
+        string romPath = args.FirstOrDefault(a => !a.StartsWith("--"))
+            ?? "game/Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb";
 
-        if (!File.Exists(romPath))
-        {
-            Console.WriteLine($"ROM file not found: {romPath}");
-            return;
-        }
-
-        byte[] rom = File.ReadAllBytes(romPath);
-
-        ICartridge cartridge = CartridgeFactory.LoadCartridge(rom);
-        SaveManager.LoadSaveData(romPath, cartridge);
+        ICartridge? currentCartridge = null;
+        string currentRom = romPath;
 
         AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
         {
-            SaveManager.SaveData(romPath, cartridge);
+            if (currentCartridge != null)
+                SaveManager.SaveData(currentRom, currentCartridge);
         };
 
-        MMU mmu = new MMU(cartridge);
-        DMG dmg = new DMG(mmu, romPath);
+        while (true)
+        {
+            if (!File.Exists(romPath))
+            {
+                Console.WriteLine($"ROM file not found: {romPath}");
+                return;
+            }
 
-        dmg.Run();
-        SaveManager.SaveData(romPath, cartridge);
+            byte[] rom = File.ReadAllBytes(romPath);
+            ICartridge cartridge = CartridgeFactory.LoadCartridge(rom);
+            SaveManager.LoadSaveData(romPath, cartridge);
+
+            currentCartridge = cartridge;
+            currentRom = romPath;
+
+            MMU mmu = new MMU(cartridge);
+            DMG dmg = new DMG(mmu, romPath);
+
+            dmg.Run();
+            SaveManager.SaveData(romPath, cartridge);
+
+            if (dmg.NextRom == null) break;
+            romPath = dmg.NextRom;
+        }
+
     }
 }

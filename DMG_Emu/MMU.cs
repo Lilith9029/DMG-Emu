@@ -206,7 +206,6 @@ public class MMU
         _cartridge.Tick(cycles);
     }
 
-    // Serialization and Deserialization
     public void SerializeState(BinaryWriter writer)
     {
         writer.Write(_wram);
@@ -214,6 +213,7 @@ public class MMU
         writer.Write(_oam);
         writer.Write(_io);
         writer.Write(_hram);
+        writer.Write(_ie);
         _cartridge.SerializeState(writer);
     }
 
@@ -224,6 +224,7 @@ public class MMU
         reader.Read(_oam, 0, _oam.Length);
         reader.Read(_io, 0, _io.Length);
         reader.Read(_hram, 0, _hram.Length);
+        _ie = reader.ReadByte();
         _cartridge.DeserializeState(reader);
     }
 }

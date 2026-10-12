@@ -1,4 +1,5 @@
 ﻿using SDL2;
+using System.Runtime.InteropServices;
 
 public class RendererDMG
 {
@@ -10,6 +11,8 @@ public class RendererDMG
     private const int ScreenWidth = 160;
     private const int ScreenHeight = 144;
     private const int Scale = 3;
+
+    public string? DroppedRom { get; private set;  }
 
     public RendererDMG()
     {
@@ -40,6 +43,19 @@ public class RendererDMG
         {
             if (e.type == SDL.SDL_EventType.SDL_QUIT)
                 return false;
+
+            if (e.type == SDL.SDL_EventType.SDL_DROPFILE)
+            {
+                string? path = Marshal.PtrToStringUTF8(e.drop.file);
+
+                if (path != null &&
+                    (path.EndsWith(".gb", StringComparison.OrdinalIgnoreCase) ||
+                    path.EndsWith(".gbc", StringComparison.OrdinalIgnoreCase)))
+                {
+                    DroppedRom = path;
+                    return false;
+                }
+            }
 
             if (e.type == SDL.SDL_EventType.SDL_KEYDOWN)
             {
