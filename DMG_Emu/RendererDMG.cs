@@ -8,6 +8,25 @@ public class RendererDMG
     private IntPtr _texture;
     private IntPtr _controller = IntPtr.Zero;
 
+    // UI
+    private const int Border = 12;
+    private const int DockHeight = 24;
+    private const int HoverZone = 10;
+    private const uint HideDelayMs = 400;
+    private const float SlideMs = 120f;
+    private const byte FrameR = 110, FrameG = 24, FrameB = 26;
+
+    public bool DockAutoHide { get; private set; } = true;
+
+    private float _dockOpen = 0f;
+    private uint _lastHoverTick;
+    private uint _lastFrameTick;
+
+    private BitmapFont _font = null!;
+    private const int TextScale = 2;
+    private static readonly string[] MenuLabels = { "FILE", "EMULATION", "VIEW", "HELP" };
+
+    // DMG
     private const int ScreenWidth = 160;
     private const int ScreenHeight = 144;
     private const int Scale = 3;
@@ -16,15 +35,25 @@ public class RendererDMG
 
     public RendererDMG()
     {
+        int winW = ScreenWidth * Scale + Border * 2;
+        int winH = ScreenHeight * Scale + Border + (DockAutoHide ? Border : DockHeight);
+
         SDL.SDL_Init(SDL.SDL_INIT_VIDEO | SDL.SDL_INIT_GAMECONTROLLER);
 
-        _window = SDL.SDL_CreateWindow("DMG Emulator", SDL.SDL_WINDOWPOS_CENTERED, SDL.SDL_WINDOWPOS_CENTERED, ScreenWidth * Scale, ScreenHeight * Scale, SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN);
+        _window = SDL.SDL_CreateWindow("DMG Emulator", SDL.SDL_WINDOWPOS_CENTERED, SDL.SDL_WINDOWPOS_CENTERED, winW, winH, SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN);
         _renderer = SDL.SDL_CreateRenderer(_window, -1, SDL.SDL_RendererFlags.SDL_RENDERER_ACCELERATED);
         _texture = SDL.SDL_CreateTexture(_renderer, SDL.SDL_PIXELFORMAT_RGB24, (int)SDL.SDL_TextureAccess.SDL_TEXTUREACCESS_STREAMING, ScreenWidth, ScreenHeight);
+        _dockOpen = DockAutoHide ? 0f : 1f;
+        _lastFrameTick = SDL.SDL_GetTicks();
+        _font = new BitmapFont(_renderer,
+            Path.Combine(AppContext.BaseDirectory, "Assets", "font.png"),
+            charW: 4, charH: 6, cols: 16);
     }
 
     public void Render(byte[] framebuffer)
     {
+        UpdateDock();
+
         unsafe
         {
             fixed (byte* ptr = framebuffer)
@@ -32,9 +61,94 @@ public class RendererDMG
                 SDL.SDL_UpdateTexture(_texture, IntPtr.Zero, (IntPtr)ptr, ScreenWidth * 3);
             }
         }
+
+        SDL.SDL_SetRenderDrawColor(_renderer, FrameR, FrameG, FrameB, 255);
         SDL.SDL_RenderClear(_renderer);
-        SDL.SDL_RenderCopy(_renderer, _texture, IntPtr.Zero, IntPtr.Zero);
+
+        SDL.SDL_Rect game = GetGameRect();
+        SDL.SDL_RenderCopy(_renderer, _texture, IntPtr.Zero, ref game);
+
+        DrawDock();
         SDL.SDL_RenderPresent(_renderer);
+    }
+
+    private SDL.SDL_Rect GetGameRect()
+    {
+        SDL.SDL_GetWindowSize(_window, out int w, out int h);
+
+        int top = DockAutoHide ? Border : DockHeight;
+        int availW = w - Border * 2;
+        int availH = h - top - Border;
+
+        int scale = Math.Max(1, Math.Min(availW / ScreenWidth, availH / ScreenHeight));
+        int gw = ScreenWidth * scale;
+        int gh = ScreenHeight * scale;
+
+        return new SDL.SDL_Rect
+        {
+            x = Border + (availW - gw) / 2,
+            y = top + (availH - gh) / 2,
+            w = gw,
+            h = gh
+        };
+    }
+
+    private void UpdateDock()
+    {
+        uint now = SDL.SDL_GetTicks();
+        float dt = Math.Min(now - _lastFrameTick, 100u);
+        _lastFrameTick = now;
+
+        if (!DockAutoHide)
+        {
+            _dockOpen = 1f;
+            return;
+        }
+
+        bool inside = (SDL.SDL_GetWindowFlags(_window) & (uint)SDL.SDL_WindowFlags.SDL_WINDOW_MOUSE_FOCUS) != 0;
+        SDL.SDL_GetMouseState(out _, out int my);
+
+        int zone = _dockOpen > 0.01f ? DockHeight : HoverZone;
+        bool hover = inside && my >= 0 && my < zone;
+
+        if (hover)
+            _lastHoverTick = now;
+        bool wantOpen = hover || (now - _lastHoverTick) < HideDelayMs;
+
+        float step = dt / SlideMs;
+        _dockOpen = wantOpen ? Math.Min(1f, _dockOpen + step) : Math.Max(0f, _dockOpen - step);
+    }
+
+    private void DrawDock()
+    {
+        if (_dockOpen <= 0.001f) return;
+
+        SDL.SDL_GetWindowSize(_window, out int w, out _);
+        int y = (int)(-DockHeight * (1f - _dockOpen));
+
+        SDL.SDL_Rect bar = new SDL.SDL_Rect { x = 0, y = y, w = w, h = DockHeight };
+        SDL.SDL_SetRenderDrawColor(_renderer, FrameR, FrameG, FrameB, 255);
+        SDL.SDL_RenderFillRect(_renderer, ref bar);
+
+        int x = 8;
+        foreach (string label in MenuLabels)
+        {
+            var size = _font.MeasureString(label, TextScale);
+            _font.DrawString(_renderer, label, x, y + (DockHeight - size.Height) / 2, 240, 200, 200, TextScale);
+            x += size.Width + 16;
+        }
+    }
+
+    public void SetDockAutoHide(bool autoHide)
+    {
+        if (DockAutoHide == autoHide) return;
+        DockAutoHide = autoHide;
+
+        SDL.SDL_GetWindowSize(_window, out int w, out int h);
+        int delta = DockHeight - Border;
+        SDL.SDL_SetWindowSize(_window, w, autoHide ? h - delta : h + delta);
+
+        _dockOpen = autoHide ? 0f : 1f;
     }
 
     public bool HandleEvents(Joypad joypad, string romPath, DMG dmg)
@@ -66,6 +180,10 @@ public class RendererDMG
                 else if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F8)
                 {
                     StateManager.LoadState(romPath, dmg, slot: 1);
+                }
+                else if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F10)
+                {
+                    SetDockAutoHide(!DockAutoHide);
                 }
             }
 
@@ -145,6 +263,7 @@ public class RendererDMG
     public void Destroy()
     {
         SDL.SDL_DestroyTexture(_texture);
+        _font.Dispose();
         SDL.SDL_DestroyRenderer(_renderer);
         SDL.SDL_DestroyWindow(_window);
         SDL.SDL_Quit();
