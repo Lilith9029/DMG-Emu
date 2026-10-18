@@ -24,7 +24,7 @@ public class RendererDMG
 
     private BitmapFont _font = null!;
     private const int TextScale = 2;
-    private static readonly string[] MenuLabels = { "FILE", "EMULATION", "VIEW", "HELP" };
+    private MenuBar _menu = null!;
 
     // DMG
     private const int ScreenWidth = 160;
@@ -48,6 +48,8 @@ public class RendererDMG
         _font = new BitmapFont(_renderer,
             Path.Combine(AppContext.BaseDirectory, "Assets", "font.png"),
             charW: 4, charH: 6, cols: 16);
+        _menu = new MenuBar(_font, TextScale);
+        BuildMenu();
     }
 
     public void Render(byte[] framebuffer)
@@ -113,7 +115,7 @@ public class RendererDMG
 
         if (hover)
             _lastHoverTick = now;
-        bool wantOpen = hover || (now - _lastHoverTick) < HideDelayMs;
+        bool wantOpen = hover || (now - _lastHoverTick) < HideDelayMs || _menu.IsOpen;
 
         float step = dt / SlideMs;
         _dockOpen = wantOpen ? Math.Min(1f, _dockOpen + step) : Math.Max(0f, _dockOpen - step);
@@ -123,23 +125,20 @@ public class RendererDMG
     {
         if (_dockOpen <= 0.001f) return;
 
-        SDL.SDL_GetWindowSize(_window, out int w, out _);
+        SDL.SDL_GetWindowSize(_window, out int w, out int h);
         int y = (int)(-DockHeight * (1f - _dockOpen));
+
+        _menu.Update(y, DockHeight, w, h);
 
         SDL.SDL_Rect bar = new SDL.SDL_Rect { x = 0, y = y, w = w, h = DockHeight };
         SDL.SDL_SetRenderDrawColor(_renderer, FrameR, FrameG, FrameB, 255);
         SDL.SDL_RenderFillRect(_renderer, ref bar);
 
-        int x = 8;
-        foreach (string label in MenuLabels)
-        {
-            var size = _font.MeasureString(label, TextScale);
-            _font.DrawString(_renderer, label, x, y + (DockHeight - size.Height) / 2, 240, 200, 200, TextScale);
-            x += size.Width + 16;
-        }
+        _menu.DrawBar(_renderer);
+        _menu.DrawDropDowns(_renderer);
     }
 
-    public void SetDockAutoHide(bool autoHide)
+    private void SetDockAutoHide(bool autoHide)
     {
         if (DockAutoHide == autoHide) return;
         DockAutoHide = autoHide;
@@ -149,6 +148,73 @@ public class RendererDMG
         SDL.SDL_SetWindowSize(_window, w, autoHide ? h - delta : h + delta);
 
         _dockOpen = autoHide ? 0f : 1f;
+    }
+
+    public void BuildMenu()
+    {
+        _menu.Tops.Add(new MenuItem { Label = "FILE", Children = new() 
+        {
+            new MenuItem { Label = "LOAD ROM...", Shortcut = "CTRL + O", OnClick = () => Console.WriteLine("Load Rom") },
+            new MenuItem { Label = "RECENT FILES", Children = new()
+            {
+                new MenuItem { Label = "(EMPTY)", IsEnabled = () => false },
+                MenuItem.Sep(),
+                new MenuItem { Label = "CLEAR RECENT FILES", OnClick = () => Console.WriteLine("Clear Recent") },
+            }},
+            MenuItem.Sep(),
+            new MenuItem { Label = "OPEN EMU FOLDER", OnClick = () => Console.WriteLine("Open Emu Folder")},
+            MenuItem.Sep(),
+            new MenuItem { Label = "EXIT", Shortcut = "CTRL + Q", OnClick = () => Console.WriteLine("Exit") },
+        }});
+
+        _menu.Tops.Add(new MenuItem { Label = "EMULATION",Children = new()
+        {
+            new MenuItem { Label = "PAUSE", Shortcut = "F4", OnClick = () => Console.WriteLine("Pause") },
+            new MenuItem { Label = "STOP", Shortcut = "F5", OnClick = () => Console.WriteLine("Stop") },
+            new MenuItem { Label = "RESTART", Shortcut = "F6", OnClick = () => Console.WriteLine("Restart") },
+            MenuItem.Sep(),
+            new MenuItem { Label = "LOAD STATE", Children = new()
+            {
+                new MenuItem { Label = "STATE 1", Shortcut = "F3", OnClick = () => Console.WriteLine("Load 1") },
+                new MenuItem { Label = "STATE 2", Shortcut = "SHILF+ F3", OnClick = () => Console.WriteLine("Load 2") },
+            }},
+            new MenuItem { Label = "SAVE STATE", Children = new()
+            {
+                new MenuItem { Label = "STATE 1", Shortcut = "F2", OnClick = () => Console.WriteLine("Save 1") },
+                new MenuItem { Label = "STATE 2", Shortcut = "SHIFT + F2", OnClick = () => Console.WriteLine("Save 2") },
+            }},
+            MenuItem.Sep(),
+            new MenuItem { Label = "CONFIGURE...", Shortcut = "CTRL + ,", OnClick = () => Console.WriteLine("Configure") },
+        }});
+
+        _menu.Tops.Add(new MenuItem { Label = "VIEW", Children = new()
+        {
+            new MenuItem { Label = "FULLSCREEN", Shortcut = "F11", OnClick = () => Console.WriteLine("Fullscreen") },
+            new MenuItem { Label = "WINDOW SIZE", Children = new()
+            {
+                new MenuItem { Label = "x2", Shortcut = "CTRL + 2", OnClick = () => Console.WriteLine("x2") },
+                new MenuItem { Label = "x3", Shortcut = "CTRL + 3", IsChecked = () => true, OnClick = () => Console.WriteLine("x3") },
+                new MenuItem { Label = "x4", Shortcut = "CTRL + 4", OnClick = () => Console.WriteLine("x4") },
+            }},
+            MenuItem.Sep(),
+            new MenuItem { Label = "THEME", Children = new()
+            {
+                new MenuItem { Label = "THEME 1", OnClick = () => Console.WriteLine("THEME 1") },
+                new MenuItem { Label = "THEME 2", OnClick = () => Console.WriteLine("THEME 2") },
+                MenuItem.Sep(),
+                new MenuItem { Label = "CONFIGURE...", OnClick = () => Console.WriteLine("Configure") },
+            }},
+            MenuItem.Sep(),
+            new MenuItem { Label = "PIN DOCK",
+                IsChecked = () => !DockAutoHide,
+                OnClick = () => SetDockAutoHide(!DockAutoHide) },
+        }});
+
+        _menu.Tops.Add(new MenuItem { Label = "HELP", Children = new()
+        {
+            new MenuItem { Label = "GITHUB REPOSITORY", OnClick = () => Console.WriteLine("GitHub") },
+            new MenuItem { Label = "ABOUT", Shortcut = "F1", OnClick = () => Console.WriteLine("About") },
+        }});
     }
 
     public bool HandleEvents(Joypad joypad, string romPath, DMG dmg)
@@ -173,11 +239,11 @@ public class RendererDMG
 
             if (e.type == SDL.SDL_EventType.SDL_KEYDOWN)
             {
-                if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F5)
+                if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F2)
                 {
                     StateManager.SaveState(romPath, dmg, slot: 1);
                 }
-                else if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F8)
+                else if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F3)
                 {
                     StateManager.LoadState(romPath, dmg, slot: 1);
                 }
@@ -201,11 +267,22 @@ public class RendererDMG
                 }
             }
 
+            // Mouse events
+            if (e.type == SDL.SDL_EventType.SDL_MOUSEMOTION)
+            {
+                _menu.OnMouseMove(e.motion.x, e.motion.y);
+            }
+            else if (e.type == SDL.SDL_EventType.SDL_MOUSEBUTTONDOWN)
+            {
+                _menu.OnMouseDown(e.button.x, e.button.y, e.button.button);
+            }
+
             // Keyboard events
             if (e.type == SDL.SDL_EventType.SDL_KEYDOWN)
             {
                 Key? key = MapKey(e.key.keysym.sym);
                 if (key.HasValue) joypad?.KeyDown(key.Value);
+                if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_ESCAPE) _menu.Close();
             }
             else if (e.type == SDL.SDL_EventType.SDL_KEYUP)
             {
