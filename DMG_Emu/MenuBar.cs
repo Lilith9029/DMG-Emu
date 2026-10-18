@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using SDL2;
+﻿using SDL2;
 
 public sealed class MenuItem
 {
@@ -66,7 +64,7 @@ public sealed class MenuBar
     {
         _openTop = -1;
         _openSub = -1;
-        _hoverL1 = _hoverL2 - 1;
+        _hoverL1 = _hoverL2 = -1;
     }
 
     public void Update(int dockY, int dockH, int winW, int winH)
@@ -220,7 +218,7 @@ public sealed class MenuBar
         for (int i = 0; i < _topRects.Length; i++)
         {
             if (!Inside(_topRects[i], mx, my)) continue;
-            if (_openTop == 1)
+            if (_openTop == i)
                 Close();
             else
             {
@@ -304,7 +302,7 @@ public sealed class MenuBar
     public void DrawPanel(IntPtr r, SDL.SDL_Rect p, List<MenuItem> items, int hover, int openSub)
     {
         Fill(r, p.x, p.y, p.w, p.h, PanelBorder);
-        Fill(r, p.x, p.y + 1, p.w - 2, p.h - 2, PanelBg);
+        Fill(r, p.x + 1, p.y + 1, p.w - 2, p.h - 2, PanelBg);
 
         int y = p.y + 1;
         for (int i = 0; i < items.Count; i++)
@@ -319,7 +317,7 @@ public sealed class MenuBar
                 continue;
             }
 
-            if (it.Enabled && i == hover || i == openSub)
+            if (it.Enabled && (i == hover || i == openSub))
                 Fill(r, p.x + 1, y, p.w - 2, h, Highlight);
 
             var col = it.Enabled ? TextNormal : TextDim;
@@ -348,5 +346,98 @@ public sealed class MenuBar
 
             y += h;
         }
+    }
+
+    private readonly struct Hotkey
+    {
+        public readonly SDL.SDL_Keycode Key;
+        public readonly bool Ctrl, Shift, Alt;
+        public Hotkey(SDL.SDL_Keycode key, bool ctrl, bool shilf, bool alt)
+        {
+            Key = key;
+            Ctrl = ctrl;
+            Shift = shilf;
+            Alt = alt;
+        }
+    }
+
+    private readonly Dictionary<MenuItem, Hotkey?> _hotkeys = new();
+
+    private static Hotkey? ParseHotkey(string text)
+    {
+        bool ctrl = false, shilf = false, alt = false;
+        string[] parts = text.Replace(" ", " ").ToUpperInvariant().Split('+');
+
+        for (int i = 0; i < parts.Length - 1; i++)
+        {
+            switch (parts[i])
+            {
+                case "CTRL": ctrl = true; break;
+                case "SHIFT": shilf = true; break;
+                case "ALT": alt = true; break;
+                default: return null;
+            }
+        }
+
+        string k = parts[^1];
+        if (k.Length >= 2 && k[0] == 'F' && int.TryParse(k.AsSpan(1), out int n) && n >= 1 && n <= 24
+            && Enum.TryParse<SDL.SDL_Keycode>($"SDLK_F{n}", out var fk))
+            return new Hotkey(fk, ctrl, shilf, alt);
+
+        if (k.Length == 1)
+            return new Hotkey((SDL.SDL_Keycode)char.ToLowerInvariant(k[0]), ctrl, shilf, alt);
+
+        return null;
+    }
+
+    private Hotkey? GetHotkey(MenuItem it)
+    {
+        if (string.IsNullOrEmpty(it.Shortcut))
+            return null;
+        if (_hotkeys.TryGetValue(it, out var cached))
+            return cached;
+
+        var hk = ParseHotkey(it.Shortcut!);
+        if (hk == null)
+            Console.WriteLine($"[Menu] Shortcut error: \"{it.Shortcut}\" ({it.Label})");
+        _hotkeys[it] = hk;
+        return hk;
+    }
+
+    public bool TryHotKey(SDL.SDL_Keycode sym, SDL.SDL_Keymod mod)
+    {
+        bool ctrl = (mod & SDL.SDL_Keymod.KMOD_CTRL) != 0;
+        bool shift = (mod & SDL.SDL_Keymod.KMOD_SHIFT) != 0;
+        bool alt = (mod & SDL.SDL_Keymod.KMOD_ALT) != 0;
+
+        foreach (var top in Tops)
+            if (RunHotkey(top.Children, sym, ctrl, shift, alt))
+                return true;
+        return false;
+    }
+
+    private bool RunHotkey(List<MenuItem>? items, SDL.SDL_Keycode sym, bool ctrl, bool shift, bool alt)
+    {
+        if (items == null)
+            return false;
+        foreach (var it in items)
+        {
+            if (it.Separator) continue;
+            if (it.Children != null)
+            {
+                if (RunHotkey(it.Children, sym, ctrl, shift, alt))
+                    return true;
+                continue;
+            }
+
+            var hk = GetHotkey(it);
+            if (hk is { } h && h.Key == sym && h.Ctrl == ctrl && h.Shift == shift && h.Alt == alt && it.Enabled)
+            {
+                Close();
+                it.OnClick?.Invoke();
+                return true;
+            }
+        }
+        return false;
     }
 }

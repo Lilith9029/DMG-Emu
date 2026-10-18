@@ -31,6 +31,9 @@ public class RendererDMG
     private const int ScreenHeight = 144;
     private const int Scale = 3;
 
+    private string _romPath = "";
+    private DMG? _dmg;
+
     public string? DroppedRom { get; private set;  }
 
     public RendererDMG()
@@ -154,7 +157,7 @@ public class RendererDMG
     {
         _menu.Tops.Add(new MenuItem { Label = "FILE", Children = new() 
         {
-            new MenuItem { Label = "LOAD ROM...", Shortcut = "CTRL + O", OnClick = () => Console.WriteLine("Load Rom") },
+            new MenuItem { Label = "LOAD ROM...", Shortcut = "CTRL+O", OnClick = () => Console.WriteLine("Load Rom") },
             new MenuItem { Label = "RECENT FILES", Children = new()
             {
                 new MenuItem { Label = "(EMPTY)", IsEnabled = () => false },
@@ -164,7 +167,7 @@ public class RendererDMG
             MenuItem.Sep(),
             new MenuItem { Label = "OPEN EMU FOLDER", OnClick = () => Console.WriteLine("Open Emu Folder")},
             MenuItem.Sep(),
-            new MenuItem { Label = "EXIT", Shortcut = "CTRL + Q", OnClick = () => Console.WriteLine("Exit") },
+            new MenuItem { Label = "EXIT", Shortcut = "CTRL+Q", OnClick = () => Console.WriteLine("Exit") },
         }});
 
         _menu.Tops.Add(new MenuItem { Label = "EMULATION",Children = new()
@@ -175,16 +178,16 @@ public class RendererDMG
             MenuItem.Sep(),
             new MenuItem { Label = "LOAD STATE", Children = new()
             {
-                new MenuItem { Label = "STATE 1", Shortcut = "F3", OnClick = () => Console.WriteLine("Load 1") },
-                new MenuItem { Label = "STATE 2", Shortcut = "SHILF+ F3", OnClick = () => Console.WriteLine("Load 2") },
+                new MenuItem { Label = "STATE 1", Shortcut = "F3", OnClick = () => LoadSlot(1) },
+                new MenuItem { Label = "STATE 2", Shortcut = "SHIFT+F3", OnClick = () => LoadSlot(2) },
             }},
             new MenuItem { Label = "SAVE STATE", Children = new()
             {
-                new MenuItem { Label = "STATE 1", Shortcut = "F2", OnClick = () => Console.WriteLine("Save 1") },
-                new MenuItem { Label = "STATE 2", Shortcut = "SHIFT + F2", OnClick = () => Console.WriteLine("Save 2") },
+                new MenuItem { Label = "STATE 1", Shortcut = "F2", OnClick = () => SaveSlot(1) },
+                new MenuItem { Label = "STATE 2", Shortcut = "SHIFT+F2", OnClick = () => SaveSlot(2) },
             }},
             MenuItem.Sep(),
-            new MenuItem { Label = "CONFIGURE...", Shortcut = "CTRL + ,", OnClick = () => Console.WriteLine("Configure") },
+            new MenuItem { Label = "CONFIGURE...", Shortcut = "CTRL+,", OnClick = () => Console.WriteLine("Configure") },
         }});
 
         _menu.Tops.Add(new MenuItem { Label = "VIEW", Children = new()
@@ -192,9 +195,9 @@ public class RendererDMG
             new MenuItem { Label = "FULLSCREEN", Shortcut = "F11", OnClick = () => Console.WriteLine("Fullscreen") },
             new MenuItem { Label = "WINDOW SIZE", Children = new()
             {
-                new MenuItem { Label = "x2", Shortcut = "CTRL + 2", OnClick = () => Console.WriteLine("x2") },
-                new MenuItem { Label = "x3", Shortcut = "CTRL + 3", IsChecked = () => true, OnClick = () => Console.WriteLine("x3") },
-                new MenuItem { Label = "x4", Shortcut = "CTRL + 4", OnClick = () => Console.WriteLine("x4") },
+                new MenuItem { Label = "x2", Shortcut = "CTRL+2", OnClick = () => Console.WriteLine("x2") },
+                new MenuItem { Label = "x3", Shortcut = "CTRL+3", IsChecked = () => true, OnClick = () => Console.WriteLine("x3") },
+                new MenuItem { Label = "x4", Shortcut = "CTRL+4", OnClick = () => Console.WriteLine("x4") },
             }},
             MenuItem.Sep(),
             new MenuItem { Label = "THEME", Children = new()
@@ -205,7 +208,7 @@ public class RendererDMG
                 new MenuItem { Label = "CONFIGURE...", OnClick = () => Console.WriteLine("Configure") },
             }},
             MenuItem.Sep(),
-            new MenuItem { Label = "PIN DOCK",
+            new MenuItem { Label = "PIN DOCK", Shortcut = "F10",
                 IsChecked = () => !DockAutoHide,
                 OnClick = () => SetDockAutoHide(!DockAutoHide) },
         }});
@@ -219,6 +222,8 @@ public class RendererDMG
 
     public bool HandleEvents(Joypad joypad, string romPath, DMG dmg)
     {
+        _romPath = romPath;
+        _dmg = dmg;
         while (SDL.SDL_PollEvent(out SDL.SDL_Event e) != 0)
         {
             if (e.type == SDL.SDL_EventType.SDL_QUIT)
@@ -239,18 +244,8 @@ public class RendererDMG
 
             if (e.type == SDL.SDL_EventType.SDL_KEYDOWN)
             {
-                if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F2)
-                {
-                    StateManager.SaveState(romPath, dmg, slot: 1);
-                }
-                else if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F3)
-                {
-                    StateManager.LoadState(romPath, dmg, slot: 1);
-                }
-                else if (e.key.keysym.sym == SDL.SDL_Keycode.SDLK_F10)
-                {
-                    SetDockAutoHide(!DockAutoHide);
-                }
+                if (e.key.repeat == 0 && _menu.TryHotKey(e.key.keysym.sym, e.key.keysym.mod))
+                    continue;
             }
 
             if (e.type == SDL.SDL_EventType.SDL_CONTROLLERDEVICEADDED)
@@ -345,4 +340,7 @@ public class RendererDMG
         SDL.SDL_DestroyWindow(_window);
         SDL.SDL_Quit();
     }
+
+    private void SaveSlot(int slot) { if (_dmg != null) StateManager.SaveState(_romPath, _dmg, slot); }
+    private void LoadSlot(int slot) { if (_dmg != null) StateManager.LoadState(_romPath, _dmg, slot); }
 }
