@@ -1,4 +1,4 @@
-﻿using SDL2;
+using SDL2;
 using System.Runtime.InteropServices;
 
 public class RendererDMG
@@ -9,7 +9,7 @@ public class RendererDMG
     private IntPtr _controller = IntPtr.Zero;
 
     // UI
-    private const int Border = 12;
+    private const int Border = 0;
     private const int DockHeight = 24;
     private const int HoverZone = 10;
     private const uint HideDelayMs = 400;
@@ -26,6 +26,10 @@ public class RendererDMG
     private const int TextScale = 2;
     private MenuBar _menu = null!;
 
+    private uint _restoreUntil;
+    private int _windowScale = Scale;
+    private int _savedX, _savedY;
+
     // DMG
     private const int ScreenWidth = 160;
     private const int ScreenHeight = 144;
@@ -33,6 +37,7 @@ public class RendererDMG
 
     private string _romPath = "";
     private DMG? _dmg;
+    private bool _quitRequested;
 
     public string? DroppedRom { get; private set;  }
 
@@ -43,9 +48,15 @@ public class RendererDMG
 
         SDL.SDL_Init(SDL.SDL_INIT_VIDEO | SDL.SDL_INIT_GAMECONTROLLER);
 
-        _window = SDL.SDL_CreateWindow("DMG Emulator", SDL.SDL_WINDOWPOS_CENTERED, SDL.SDL_WINDOWPOS_CENTERED, winW, winH, SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN);
+        _window = SDL.SDL_CreateWindow("DMG Emulator",
+            SDL.SDL_WINDOWPOS_CENTERED, SDL.SDL_WINDOWPOS_CENTERED, winW, winH,
+            SDL.SDL_WindowFlags.SDL_WINDOW_SHOWN | SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE);
+        SDL.SDL_SetWindowMinimumSize(_window,
+            ScreenWidth + Border * 2,
+            ScreenHeight + DockHeight + Border);
         _renderer = SDL.SDL_CreateRenderer(_window, -1, SDL.SDL_RendererFlags.SDL_RENDERER_ACCELERATED);
-        _texture = SDL.SDL_CreateTexture(_renderer, SDL.SDL_PIXELFORMAT_RGB24, (int)SDL.SDL_TextureAccess.SDL_TEXTUREACCESS_STREAMING, ScreenWidth, ScreenHeight);
+        _texture = SDL.SDL_CreateTexture(_renderer,
+            SDL.SDL_PIXELFORMAT_RGB24, (int)SDL.SDL_TextureAccess.SDL_TEXTUREACCESS_STREAMING, ScreenWidth, ScreenHeight);
         _dockOpen = DockAutoHide ? 0f : 1f;
         _lastFrameTick = SDL.SDL_GetTicks();
         _font = new BitmapFont(_renderer,
@@ -57,6 +68,7 @@ public class RendererDMG
 
     public void Render(byte[] framebuffer)
     {
+        EnforceWindowSize();
         UpdateDock();
 
         unsafe
@@ -81,20 +93,43 @@ public class RendererDMG
     {
         SDL.SDL_GetWindowSize(_window, out int w, out int h);
 
+        if (IsFullscreen)
+        {
+            int topF = DockAutoHide ? 0 : DockHeight;
+            int availWF = w;
+            int availHF = h - topF;
+
+            int gh = availHF;
+            int gw = gh * ScreenWidth / ScreenHeight;
+            if (gw > availWF)
+            {
+                gw = availWF;
+                gh = gw * ScreenHeight / ScreenWidth;
+            }
+
+            return new SDL.SDL_Rect
+            {
+                x = (availWF - gw) / 2,
+                y = topF + (availHF - gh) / 2,
+                w = gw,
+                h = gh
+            };
+        }
+
         int top = DockAutoHide ? Border : DockHeight;
         int availW = w - Border * 2;
         int availH = h - top - Border;
 
         int scale = Math.Max(1, Math.Min(availW / ScreenWidth, availH / ScreenHeight));
-        int gw = ScreenWidth * scale;
-        int gh = ScreenHeight * scale;
+        int gwW = ScreenWidth * scale;
+        int ghW = ScreenHeight * scale;
 
         return new SDL.SDL_Rect
         {
-            x = Border + (availW - gw) / 2,
-            y = top + (availH - gh) / 2,
-            w = gw,
-            h = gh
+            x = Border + (availW - gwW) / 2,
+            y = top + (availH - ghW) / 2,
+            w = gwW,
+            h = ghW
         };
     }
 
@@ -146,9 +181,8 @@ public class RendererDMG
         if (DockAutoHide == autoHide) return;
         DockAutoHide = autoHide;
 
-        SDL.SDL_GetWindowSize(_window, out int w, out int h);
-        int delta = DockHeight - Border;
-        SDL.SDL_SetWindowSize(_window, w, autoHide ? h - delta : h + delta);
+        if (!IsFullscreen && !IsMaximized)
+            ApplyWindowSize();
 
         _dockOpen = autoHide ? 0f : 1f;
     }
@@ -167,14 +201,14 @@ public class RendererDMG
             MenuItem.Sep(),
             new MenuItem { Label = "OPEN EMU FOLDER", OnClick = () => Console.WriteLine("Open Emu Folder")},
             MenuItem.Sep(),
-            new MenuItem { Label = "EXIT", Shortcut = "CTRL+Q", OnClick = () => Console.WriteLine("Exit") },
+            new MenuItem { Label = "EXIT", Shortcut = "CTRL+Q", OnClick = () => RequestExit() },
         }});
 
         _menu.Tops.Add(new MenuItem { Label = "EMULATION",Children = new()
         {
             new MenuItem { Label = "PAUSE", Shortcut = "F4", OnClick = () => Console.WriteLine("Pause") },
             new MenuItem { Label = "STOP", Shortcut = "F5", OnClick = () => Console.WriteLine("Stop") },
-            new MenuItem { Label = "RESTART", Shortcut = "F6", OnClick = () => Console.WriteLine("Restart") },
+            new MenuItem { Label = "RESTART", Shortcut = "F6", OnClick = () => RestartRom() },
             MenuItem.Sep(),
             new MenuItem { Label = "LOAD STATE", Children = new()
             {
@@ -192,12 +226,12 @@ public class RendererDMG
 
         _menu.Tops.Add(new MenuItem { Label = "VIEW", Children = new()
         {
-            new MenuItem { Label = "FULLSCREEN", Shortcut = "F11", OnClick = () => Console.WriteLine("Fullscreen") },
+            new MenuItem { Label = "FULLSCREEN", Shortcut = "F11", IsChecked = () => IsFullscreen, OnClick = () => ToggleFullscreen() },
             new MenuItem { Label = "WINDOW SIZE", Children = new()
             {
-                new MenuItem { Label = "x2", Shortcut = "CTRL+2", OnClick = () => Console.WriteLine("x2") },
-                new MenuItem { Label = "x3", Shortcut = "CTRL+3", IsChecked = () => true, OnClick = () => Console.WriteLine("x3") },
-                new MenuItem { Label = "x4", Shortcut = "CTRL+4", OnClick = () => Console.WriteLine("x4") },
+                ScaleItem(2),
+                ScaleItem(3),
+                ScaleItem(4)
             }},
             MenuItem.Sep(),
             new MenuItem { Label = "THEME", Children = new()
@@ -271,6 +305,11 @@ public class RendererDMG
             {
                 _menu.OnMouseDown(e.button.x, e.button.y, e.button.button);
             }
+            if (e.type == SDL.SDL_EventType.SDL_WINDOWEVENT && 
+                e.window.windowEvent == SDL.SDL_WindowEventID.SDL_WINDOWEVENT_SIZE_CHANGED)
+            {
+                OnWindowResized();
+            }
 
             // Keyboard events
             if (e.type == SDL.SDL_EventType.SDL_KEYDOWN)
@@ -297,7 +336,7 @@ public class RendererDMG
                 if (key.HasValue) joypad?.KeyUp(key.Value);
             }
         }
-        return true;
+        return !_quitRequested;
     }
 
     private Key? MapKey(SDL.SDL_Keycode keycode)
@@ -339,6 +378,112 @@ public class RendererDMG
         SDL.SDL_DestroyRenderer(_renderer);
         SDL.SDL_DestroyWindow(_window);
         SDL.SDL_Quit();
+    }
+
+    private int WindowW() => ScreenWidth * _windowScale + Border * 2;
+    private int WindowH() => ScreenHeight * _windowScale + (DockAutoHide ? Border : DockHeight) + Border;
+    private bool IsFullscreen =>
+        (SDL.SDL_GetWindowFlags(_window) & (uint)SDL.SDL_WindowFlags.SDL_WINDOW_FULLSCREEN_DESKTOP) != 0;
+    private bool IsMaximized =>
+    (SDL.SDL_GetWindowFlags(_window) & (uint)SDL.SDL_WindowFlags.SDL_WINDOW_MAXIMIZED) != 0;
+
+    private void ApplyWindowSize()
+    {
+        SDL.SDL_GetWindowSize(_window, out int w, out int h);
+        if (w != WindowW() || h != WindowH())
+            SDL.SDL_SetWindowSize(_window, WindowW(), WindowH());
+    }
+
+    private void ToggleFullscreen()
+    {
+        uint now = SDL.SDL_GetTicks();
+
+        if (!IsFullscreen)
+        {
+            SDL.SDL_SetWindowFullscreen(_window, (uint)SDL.SDL_WindowFlags.SDL_WINDOW_FULLSCREEN_DESKTOP);
+        }
+        else
+        {
+            SDL.SDL_SetWindowFullscreen(_window, 0);
+            _restoreUntil = now + 500;
+            ApplyWindowSize();
+            SDL.SDL_SetWindowPosition(_window, _savedX, _savedY);
+        }
+    }
+
+    private void OnWindowResized()
+    {
+        if (IsFullscreen || IsMaximized || _restoreUntil != 0) return;
+
+        SDL.SDL_GetWindowSize(_window, out int w, out int h);
+        int top = DockAutoHide ? Border : DockHeight;
+        int s = Math.Min((w - Border * 2) / ScreenWidth, (h - top - Border) / ScreenHeight);
+        _windowScale = Math.Max(1, s);
+    }
+
+    private void EnforceWindowSize()
+    {
+        if (IsFullscreen || IsMaximized) return;
+
+        if (_restoreUntil != 0)
+        {
+            if (SDL.SDL_GetTicks() > _restoreUntil)
+            {
+                _restoreUntil = 0;
+            }
+            else
+            {
+                ApplyWindowSize();
+                SDL.SDL_GetWindowPosition(_window, out int x, out int y);
+                if (x != _savedX || y != _savedY)
+                    SDL.SDL_SetWindowPosition(_window, _savedX, _savedY);
+                return;
+            }
+        }
+
+        SDL.SDL_GetWindowPosition(_window, out _savedX, out _savedY);
+    }
+
+    private int CurrentScale() => GetGameRect().w / ScreenWidth;
+
+    private void SetWindowScale(int s)
+    {
+        if (IsFullscreen) return;
+        if (IsMaximized)
+            SDL.SDL_RestoreWindow(_window);
+
+        SDL.SDL_GetWindowPosition(_window, out int px, out int py);
+        SDL.SDL_GetWindowSize(_window, out int ow, out int oh);
+
+        _windowScale = s;
+        int nw = WindowW(), nh = WindowH();
+
+        SDL.SDL_SetWindowSize(_window, nw, nh);
+        SDL.SDL_SetWindowPosition(_window,
+            px + (ow - nw) / 2,
+            Math.Max(0, py + (oh - nh) / 2));
+
+        int nx = px + (ow - nw) / 2;
+        int ny = Math.Max(0, py + (oh - nh) / 2);
+        SDL.SDL_SetWindowPosition(_window, nx, ny);
+        _savedX = nx;
+        _savedY = ny;
+    }
+
+    private MenuItem ScaleItem(int s) => new MenuItem
+    {
+        Label = $"x{s}",
+        Shortcut = $"CTRL+{s}",
+        IsChecked = () => !IsFullscreen && _windowScale == s,
+        OnClick = () => SetWindowScale(s)
+    };
+
+    private void RequestExit() => _quitRequested = true;
+
+    private void RestartRom()
+    {
+        DroppedRom = _romPath;
+        _quitRequested = true;
     }
 
     private void SaveSlot(int slot) { if (_dmg != null) StateManager.SaveState(_romPath, _dmg, slot); }
