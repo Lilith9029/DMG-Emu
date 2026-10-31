@@ -1,4 +1,7 @@
-﻿public class DMG
+﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
+
+public class DMG
 {
     public CPU _cpu;
     public Joypad _joypad;
@@ -10,6 +13,9 @@
 
     private readonly string _romPath;
     public string? NextRom => _renderer.DroppedRom;
+
+    [DllImport("winmm.dll")] private static extern uint timeBeginPeriod(uint ms);
+    [DllImport("winmm.dll")] private static extern uint timeEndPeriod(uint ms);
 
     public DMG(MMU mmu, string romPath)
     {
@@ -40,12 +46,24 @@
 
     public void Run()
     {
-        const double TargetFrameTime = 1000.0 / 59.73; // ~16.75ms
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        /*const double TargetFrameTime = 1000.0 / 59.73; // ~16.75ms
+        var sw = System.Diagnostics.Stopwatch.StartNew();*/
+
+        const double fps = 4194304.0 / 70224.0; // ~59.7275
+        long frameTicks = (long)(Stopwatch.Frequency / fps);
+        long next = Stopwatch.GetTimestamp();
+        long spinTicks = Stopwatch.Frequency * 2 / 1000;
+
+        int frames = 0;
+        long lastReport = Stopwatch.GetTimestamp();
+
+        if (OperatingSystem.IsWindows())
+            timeBeginPeriod(1);
 
         while (_renderer.HandleEvents(_joypad, _romPath, this))
         {
-            long startTime = sw.ElapsedMilliseconds;
+            /*long startTime = sw.ElapsedMilliseconds;
+            long start = Stopwatch.GetTimestamp();*/
 
             while (!_ppu.FrameReady)
             {
@@ -60,13 +78,38 @@
             _renderer.Render(_ppu.Framebuffer);
             _ppu.ClearFrameReady();
 
-            while (sw.ElapsedMilliseconds - startTime < TargetFrameTime)
+            long curr = Stopwatch.GetTimestamp();
+            if (curr - next > 5 * frameTicks)
+                next = curr;
+
+            next += frameTicks;
+            while (true)
             {
-                System.Threading.Thread.Sleep(0);
+                long remain = next - Stopwatch.GetTimestamp();
+
+                if (remain <= 0) break;
+
+                if (remain > spinTicks)
+                    Thread.Sleep(1);
+                else
+                    Thread.SpinWait(30);
             }
+
+            // Test
+            frames++;
+            long now = Stopwatch.GetTimestamp();
+            if (now - lastReport >= Stopwatch.Frequency)
+            {
+                double secs = (now - lastReport) / (double)Stopwatch.Frequency;
+                Console.WriteLine($"Framerate: {frames / secs:F2}");
+                frames = 0;
+                lastReport = now;
+            } 
         }
 
         _renderer.Destroy();
+        if (OperatingSystem.IsWindows())
+            timeEndPeriod(1);
         _apu.Dispose();
     }
 
