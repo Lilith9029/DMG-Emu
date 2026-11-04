@@ -16,6 +16,9 @@ public class MMU
     private byte[] _hram = new byte[0x7F]; // 127 bytes
     private byte _ie; // 1 byte
 
+    public byte InterruptFlags => _io[0x0F];
+    public byte InterruptEnable => _ie;
+
     public MMU(ICartridge cartridge)
     {
         _cartridge = cartridge;

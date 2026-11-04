@@ -11,6 +11,7 @@ public class DMG
     public PPU _ppu;
     public APU _apu;
 
+    private static readonly ushort[] Vectors = { 0x0040, 0x0048, 0x0050, 0x0058, 0x0060 };
     private readonly string _romPath;
     public string? NextRom => _renderer.DroppedRom;
 
@@ -110,8 +111,8 @@ public class DMG
 
     private void HandleInterrupts()
     {
-        byte IF = _mmu.Read(0xFF0F);
-        byte IE = _mmu.Read(0xFFFF);
+        byte IF = _mmu.InterruptFlags;
+        byte IE = _mmu.InterruptEnable;
         byte pending = (byte)(IF & IE & 0x1F);
 
         if (pending == 0) return;
@@ -122,13 +123,12 @@ public class DMG
 
         _cpu._ime = false;
 
-        ushort[] vectors = { 0x0040, 0x0048, 0x0050, 0x0058, 0x0060 };
         for (int i = 0; i < 5; i++)
         {
             if ((pending & (1 << i)) != 0)
             {
                 _mmu.Write(0xFF0F, (byte)(IF & ~(1 << i)));
-                int dispatchCycles = _cpu.CallInterrupt(vectors[i]);
+                int dispatchCycles = _cpu.CallInterrupt(Vectors[i]);
 
                 _timer.Tick(dispatchCycles);
                 _ppu.Tick(dispatchCycles);
