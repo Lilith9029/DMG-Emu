@@ -5,6 +5,7 @@
     private byte[] _bgScanlineBuffer = new byte[160];
     private int _cycles = 0;
     private int _mode = 2; // OAM
+    private readonly byte[] _vram;
 
     public bool FrameReady { get; private set; }
     private byte ly = 0;
@@ -20,9 +21,11 @@
     public byte[] Framebuffer => _framebuffer;
     public void ClearFrameReady() => FrameReady = false;
 
+
     public PPU(MMU mmu)
     {
         _mmu = mmu;
+        _vram = mmu.VRAM;
     }
 
     public void Tick(int cycles)
@@ -110,45 +113,53 @@
 
     private void RenderBackground(byte ly)
     {
-        byte lcdc = _mmu.Read(0xFF40);
+        byte lcdc = _mmu.IO[0x40];
         if ((lcdc & 0x01) == 0) return;
 
-        byte scx = _mmu.Read(0xFF43);
-        byte scy = _mmu.Read(0xFF42);
-        byte bgp = _mmu.Read(0xFF47);
+        byte scx = _mmu.IO[0x43];
+        byte scy = _mmu.IO[0x42];
+        byte bgp = _mmu.IO[0x47];
 
-        ushort tileMapBase = (ushort)((lcdc & 0x08) != 0 ? 0x9C00 : 0x9800);
+        int tileMapBase = (lcdc & 0x08) != 0 ? 0x1C00 : 0x1800;
         bool isUnsigned = (lcdc & 0x10) != 0;
 
-        int bgY = (scy + ly) % 256;
-        int tileY = bgY / 8;
-        byte lineOffset = (byte)((bgY % 8) * 2);
+        int bgY = (scy + ly) & 0xFF;
+        int tileY = bgY >> 3;
+        byte lineOffset = (byte)((bgY & 7) * 2);
 
-        for (int x = 0; x < 160; x++)
+        int x = 0;
+        while (x < 160)
         {
-            int bgX = (scx + x) % 256;
-            int tileX = bgX / 8;
+            int bgX = (scx + x) & 0xFF;
+            int tileX = bgX >> 3;
+            int fineX = bgX & 7;
 
-            ushort tileAddress = (ushort)(tileMapBase + (tileY * 32) + tileX);
-            byte tileIndex = _mmu.Read(tileAddress);
+            byte tileIndex = _vram[tileMapBase + (tileY * 32) + tileX];
 
-            ushort tileDataAddress = isUnsigned
-                ? (ushort)(0x8000 + (tileIndex * 16))
-                : (ushort)(0x9000 + ((sbyte)tileIndex * 16));
+            int tileDataAddress = isUnsigned
+                ? (tileIndex * 16)
+                : (0x1000 + ((sbyte)tileIndex * 16));
 
-            byte lo = _mmu.Read((ushort)(tileDataAddress + lineOffset));
-            byte hi = _mmu.Read((ushort)(tileDataAddress + lineOffset + 1));
-            byte bitIndex = (byte)(7 - (bgX % 8));
+            byte lo = _vram[tileDataAddress + lineOffset];
+            byte hi = _vram[tileDataAddress + lineOffset + 1];
 
-            int colorIndex = ((hi >> bitIndex) & 0x01) << 1 | ((lo >> bitIndex) & 0x01);
-            _bgScanlineBuffer[x] = (byte)colorIndex;
-            int colorBit = (bgp >> (colorIndex * 2)) & 0x03;
+            int count = Math.Min(8 - fineX, 160 - x);
+            for (int i = 0; i < count; i++)
+            {
+                int px = x + i;
+                int bit = 7 - (fineX + i);
+                int colorIndex = ((hi >> bit) & 0x01) << 1 | ((lo >> bit) & 0x01);
+                _bgScanlineBuffer[px] = (byte)colorIndex;
 
-            var color = _color[colorBit];
-            int index = (ly * 160 + x) * 3;
-            _framebuffer[index] = color.r;
-            _framebuffer[index + 1] = color.g;
-            _framebuffer[index + 2] = color.b;
+                int colorBit = (bgp >> (colorIndex * 2)) & 0x03;
+                var color = _color[colorBit];
+
+                int index = (ly * 160 + px) * 3;
+                _framebuffer[index] = color.r;
+                _framebuffer[index + 1] = color.g;
+                _framebuffer[index + 2] = color.b;
+            }
+            x += count;
         }
     }
 

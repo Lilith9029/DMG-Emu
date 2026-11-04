@@ -46,14 +46,12 @@ public class DMG
 
     public void Run()
     {
-        /*const double TargetFrameTime = 1000.0 / 59.73; // ~16.75ms
-        var sw = System.Diagnostics.Stopwatch.StartNew();*/
-
         const double fps = 4194304.0 / 70224.0; // ~59.7275
         long frameTicks = (long)(Stopwatch.Frequency / fps);
         long next = Stopwatch.GetTimestamp();
-        long spinTicks = Stopwatch.Frequency * 2 / 1000;
+        long spinTicks = Stopwatch.Frequency * 1 / 1000;
 
+        // Test
         int frames = 0;
         long lastReport = Stopwatch.GetTimestamp();
 
@@ -62,9 +60,6 @@ public class DMG
 
         while (_renderer.HandleEvents(_joypad, _romPath, this))
         {
-            /*long startTime = sw.ElapsedMilliseconds;
-            long start = Stopwatch.GetTimestamp();*/
-
             while (!_ppu.FrameReady)
             {
                 int leftover = _cpu.ExecuteInstruction();

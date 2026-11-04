@@ -460,8 +460,10 @@ public class RendererDMG
 
         int nx = px + (ow - nw) / 2;
         int ny = Math.Max(0, py + (oh - nh) / 2);
+
         SDL.SDL_SetWindowSize(_window, nw, nh);
         SDL.SDL_SetWindowPosition(_window, nx, ny);
+
         _savedX = nx;
         _savedY = ny;
     }

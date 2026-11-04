@@ -8,8 +8,10 @@ public class MMU
 
     private byte[] _wram = new byte[0x2000]; // 8KB
     private byte[] _vram = new byte[0x2000]; // 8KB
+    public byte[] VRAM => _vram;
     private byte[] _oam = new byte[0xA0]; // 160 bytes
     private byte[] _io = new byte[0x80]; // 128 bytes
+    public byte[] IO => _io;
     private byte[] _hram = new byte[0x7F]; // 127 bytes
     private byte _ie; // 1 byte
 
